@@ -32,9 +32,15 @@ import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import nu.nuru.hellogravity.ui.theme.HelloGravityTheme
 import java.util.UUID
+import java.util.concurrent.locks.Lock
+import java.util.concurrent.locks.ReentrantReadWriteLock
+import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock
 
 const val TAG = "hellogravity"
 
@@ -56,6 +62,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     private var bluetoothGatts: MutableMap<String, BluetoothGatt> = mutableMapOf()
 //    var characteristicsMap: Map<PhlbleEnum, BluetoothGattCharacteristic?>? = null
     val characteristicsMaps: MutableMap<String, Map<PhlbleEnum, BluetoothGattCharacteristic?>> = mutableMapOf()
+    val reentrantLock = ReentrantReadWriteLock()
 
     // https://github.com/npaun/philble/blob/master/philble/client.py
     enum class PhlbleEnum(val code: Int) {
@@ -98,11 +105,17 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                 // https://www.reddit.com/r/Hue/comments/eq0y3y/philips_hue_bluetooth_developer_documentation/
                 // Read and write data to characteristics
                 val service = gatt.getService(PhlbleEnum.SERVICE.uuid)
-                characteristicsMaps[gatt.device.address] = mapOf(
-                    PhlbleEnum.ONOFF to service?.getCharacteristic(PhlbleEnum.ONOFF.uuid),
-                    PhlbleEnum.COLOR to service?.getCharacteristic(PhlbleEnum.COLOR.uuid),
-                    PhlbleEnum.BRIGHTNESS to service?.getCharacteristic(PhlbleEnum.BRIGHTNESS.uuid)
-                )
+                val lock = reentrantLock.writeLock()
+                lock.lock()
+                try {
+                    characteristicsMaps[gatt.device.address] = mapOf(
+                        PhlbleEnum.ONOFF to service?.getCharacteristic(PhlbleEnum.ONOFF.uuid),
+                        PhlbleEnum.COLOR to service?.getCharacteristic(PhlbleEnum.COLOR.uuid),
+                        PhlbleEnum.BRIGHTNESS to service?.getCharacteristic(PhlbleEnum.BRIGHTNESS.uuid)
+                    )
+                } finally {
+                    lock.unlock()
+                }
 //                val characteristic: BluetoothGattCharacteristic? =
 //                    gatt.getService(PhlbleEnum.SERVICE.uuid)?.getCharacteristic(PhlbleEnum.COLOR.uuid)
 ////                gatt.getService(PhlbleEnum.SERVICE.uuid)?.getCharacteristic(PhlbleEnum.ONOFF.uuid)
@@ -290,33 +303,72 @@ class MainActivity : ComponentActivity(), SensorEventListener {
 //        }
     }
 
+    private val hystStates: MutableMap<String, Boolean> = mutableMapOf()
+    private val hystMutex = Mutex()
+    suspend fun logHyst(device: String, x: Float) {
+        hystMutex.withLock {
+            if (!hystStates.contains(device)) {
+                hystStates[device] = false
+            }
+            if (hystStates[device] == true && x < 0.8) {
+                hystStates[device] = false
+            }
+            if (hystStates[device] == true && x > 0.9) {
+                Log.v(TAG, "logHyst: $device OFF->ON")
+            }
+        }
+    }
+
     @SuppressLint("MissingPermission")
     fun lightsColor(r: Float, g: Float, b: Float) {
         CoroutineScope(Dispatchers.IO).launch {
-            for ((address, characteristicsMap) in characteristicsMaps) {
-                val color = characteristicsMap.get(PhlbleEnum.COLOR)
-                if (color != null) {
-                    @Suppress("DEPRECATION")
-                    color.value = PhlbleEnum.COLOR.value(r, g, b)
-                    @Suppress("DEPRECATION")
-                    bluetoothGatts.get(address)!!.writeCharacteristic(color)
-                } else {
-                    logDebounced("color characteristic missing on $address")
+            val lock = reentrantLock.readLock()
+            lock.lock()
+            try {
+                for ((address, characteristicsMap) in characteristicsMaps) {
+                    val color = characteristicsMap.get(PhlbleEnum.COLOR)
+                    if (color != null) {
+                        @Suppress("DEPRECATION")
+                        color.value = PhlbleEnum.COLOR.value(r, g, b)
+                        @Suppress("DEPRECATION")
+                        bluetoothGatts.get(address)!!.writeCharacteristic(color)
+                        logHyst(address, r);
+                    } else {
+                        logDebounced("color characteristic missing on $address")
+                    }
                 }
+            } finally {
+                lock.unlock()
             }
         }
     }
 
     override fun onSensorChanged(e: SensorEvent?) {
+
+        fun xyzToRgb(x: Float, y: Float, z: Float): Triple<Float, Float, Float> {
+            val r = (x + 10) / 20
+            val g = (y + 10) / 20
+            val b = (z + 10) / 20
+            return Triple(r, g, b)
+        }
+
+        fun zToRb(x: Float, y: Float, z: Float): Triple<Float, Float, Float> {
+            val r = (10 + z) / 20
+            val g = 0F
+            val b = (10 - z) / 20
+            return Triple(r, g, b)
+        }
+
         val x = e!!.values[0]
         val y = e!!.values[1]
         val z = e!!.values[2]
+
+//        val (r, g, b) = xyzToRgb(x, y, z);
+        val (r, g, b) = zToRb(x, y, z);
+
 //        val h = (y+10) / 20 * 360
 //        val s = (x+10) / 20
 //        val l = (z+10) / 20
-        val r = (x + 10) / 20
-        val g = (y + 10) / 20
-        val b = (z + 10) / 20
         i++;
 //        lightsBrightness((y + 10) / 20)
         lightsColor(r, g, b)
