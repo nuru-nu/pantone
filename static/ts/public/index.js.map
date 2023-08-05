@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../src/public/index.ts"],
+  "sourcesContent": ["console.log('js running! still...');"],
+  "mappings": ";;AAAA,UAAQ,IAAI,sBAAsB;",
+  "names": []
+}

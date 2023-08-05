@@ -1,0 +1,68 @@
+<!doctype html>
+
+<!-- <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"> -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style type="text/tailwindcss">
+.light {
+    @apply
+        cursor-pointer
+        border rounded
+        border-yellow-400 hover:border-red-400
+        text-yellow-400 hover:text-red-400
+        text-sm text-center align-middle
+        w-8 h-8
+    ;
+}
+.light.on, button.on {
+    @apply
+        bg-yellow-400 hover:bg-red-400
+        text-black;
+}
+#control {
+    background-image: radial-gradient(circle at top right, transparent 0%, red 100%), radial-gradient(circle at bottom left, transparent 0%, green 100%);
+}
+input[type="text"] {
+    @apply bg-transparent border-b border-slate-300;
+    outline:none;
+}
+button {
+    @apply
+    border rounded
+    border-yellow-400 text-yellow-400
+    p-2 text-xs;
+}
+</style>
+
+<script src="index.js" type="module"></script>
+
+<body class="bg-gray-800 text-slate-300">
+<div class="container p-4 flex flex-col gap-4">
+
+<div class="flex gap-2">
+    <div class="light">5</div>
+    <div class="light">4</div>
+    <div class="light">1</div>
+    <div class="light">3</div>
+    <div class="light">2</div>
+    <div class="flex-1"></div>
+    <button id="live">live</button>
+    <button id="state">state</button>
+    <button id="dump">dump</button>
+</div>
+
+<div id="control" class="w-full aspect-video rounded-lg"></div>
+
+<div class="flex flex-col">
+    <div class="flex gap-2">
+        <code>PUT</code>
+        <input type="text" id="put_path" value="lights/1/state" class="w-30">
+        <input type="text" id="put_body" value="{&quot;on&quot;: true}" class="flex-1">
+    </div>
+</div>
+
+<pre id="log" class="w-full aspect-video overflow-auto text-xs">
+</pre>
+
+</div>
+</body>
