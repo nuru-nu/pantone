@@ -55,6 +55,12 @@ async function controlit(e) {
 control.addEventListener('click', controlit);
 control.addEventListener('mousemove', e => live.classList.contains('on') && controlit(e));
 
+function stats() {
+    document.querySelector('#stats').textContent = hue.stats();
+    window.setTimeout(stats, 300);
+}
+stats();
+
 async function init() {
     const data = await hue.get('lights');
     for (const [id, value] of Object.entries(data)) {

@@ -3,12 +3,24 @@ import {log} from './utils.js';
 function delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-  
+
+function mean(array) {
+    const sum = array.reduce((acc, value) => acc + value, 0);
+    return sum / array.length;
+}
+
+function std(array) {
+    const mu = mean(array);
+    const squaredDifferences = array.map(value => Math.pow(value - mu, 2));
+    const variance = squaredDifferences.reduce((acc, value) => acc + value, 0) / array.length;
+    return Math.sqrt(variance);
+}
 
 export default function(ip, hueser) {
 
     const queues = new Map();
     const inflight = new Set();
+    let dropped = 0, dts = [];
 
     async function get(path) {
         const url = `http://${ip}/api/${hueser}/${path}`;
@@ -29,7 +41,7 @@ export default function(ip, hueser) {
         if (!queue || !queue.length) return;
         const idx = queue.length - 1;
         if (idx) {
-            log(`${path} skipping ${idx}`);
+            dropped += idx;
         }
         inflight.add(path);
         const {method, body} = queue[idx];
@@ -45,6 +57,7 @@ export default function(ip, hueser) {
             body: JSON.stringify(body),
         });
         const dt = Date.now() - t0;
+        dts.push(dt);
         if (!resp.ok) throw new Error(`resp not okay! ${resp}`);
         const data = await resp.json();
         log(`${dt}ms – ${JSON.stringify(data)}`);
@@ -70,7 +83,15 @@ export default function(ip, hueser) {
         return await resp.json();
     }
 
+    function stats() {
+        const rd = x => Math.round(100 * x) / 100;
+        return (
+            `sent ${dts.length} dropped ${rd(100*dropped/(dropped+dts.length))}% ` +
+            `dt=${rd(mean(dts))}±${rd(std(dts))}`
+        );
+    }
+
     return {
-        set, state, put, get,
+        set, state, put, get, stats,
     };
 }
