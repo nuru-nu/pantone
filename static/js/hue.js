@@ -10,10 +10,23 @@ export default function(ip, hueser) {
     const queues = new Map();
     const inflight = new Set();
 
+    async function get(path) {
+        const url = `http://${ip}/api/${hueser}/${path}`;
+        const resp = await fetch(
+            url, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+        if (!resp.ok) throw new Error(`resp not okay! ${resp}`);
+        return await resp.json();
+    }
+
     async function sendone(path) {
         if (inflight.has(path)) return;
         const queue = queues.get(path);
-        if (!queue.length) return;
+        if (!queue || !queue.length) return;
         const idx = queue.length - 1;
         if (idx) {
             log(`${path} skipping ${idx}`);
@@ -58,6 +71,6 @@ export default function(ip, hueser) {
     }
 
     return {
-        set, state, put,
+        set, state, put, get,
     };
 }

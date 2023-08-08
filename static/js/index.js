@@ -1,6 +1,9 @@
 import Textfield from './components/textfield.js';
 import Hue from './hue.js';
-import {log} from './utils.js';
+import {log, onerror} from './utils.js';
+import {div} from './components/html.js';
+
+onerror(log);
 
 const control = document.querySelector('#control');
 const live = document.querySelector('#live');
@@ -10,20 +13,11 @@ const put_path = document.querySelector('#put_path');
 const put_body = document.querySelector('#put_body');
 
 const ip = '192.168.0.119';
-const hueser = 'ibFm3Ltg35wXp53IOGg2doChOrnfGLNCe6s7gQ2W';
+const hueser = 'AEOfkTiZbCyKeG5Ms0o0APh7T2bmtzu1V14S9UEd';
 
 const hue = Hue(ip, hueser);
 
-const lights = [...document.querySelectorAll('.light')];
-
-lights.forEach(el => {
-    const idx = parseInt(el.textContent);
-    el.addEventListener('click', () => {
-        el.classList.toggle('on');
-        hue.set(idx, el.classList.contains('on'));
-    });
-    hue.set(idx, el.classList.contains('on'));
-});
+const lights = [];
 
 dump.addEventListener('click', async () => {
     const state = await hue.state();
@@ -61,4 +55,20 @@ async function controlit(e) {
 control.addEventListener('click', controlit);
 control.addEventListener('mousemove', e => live.classList.contains('on') && controlit(e));
 
-log.textContent = 'ready';
+async function init() {
+    const data = await hue.get('lights');
+    for (const [id, value] of Object.entries(data)) {
+        const light = div('light ' + (value.state.on ? 'on ' : ''));
+        light.textContent = id;
+        lights.push(light);
+        document.querySelector('#lights').append(light);
+
+        light.addEventListener('click', () => {
+            light.classList.toggle('on');
+            hue.set(id, light.classList.contains('on'));
+        });
+    }
+    put_path.value = `lights/${lights[0].textContent}/state`;
+    log('ready');
+}
+init();

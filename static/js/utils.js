@@ -10,3 +10,14 @@ function ts() {
 export function log(message) {
     pre.textContent = ts() + ' ' + message + '\n\n' + pre.textContent;
 }
+
+export function onerror(handler) {
+    function onerror(e) {
+      console.log(e);
+      handler(e.error || e.reason);
+    }
+  
+    window.addEventListener("error", onerror);
+    window.addEventListener("unhandledrejection", onerror);
+  }
+  
