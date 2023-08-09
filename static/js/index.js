@@ -61,19 +61,27 @@ function stats() {
 }
 stats();
 
+const strategy = document.querySelector('#strategy');
+hue.opts.strategy = strategy.value;
+strategy.addEventListener('change', () => hue.opts.strategy = strategy.value);
+
 async function init() {
     const data = await hue.get('lights');
+    const names_lights = [];
     for (const [id, value] of Object.entries(data)) {
         const light = div('light ' + (value.state.on ? 'on ' : ''));
         light.textContent = id;
         lights.push(light);
-        document.querySelector('#lights').append(light);
-
         light.addEventListener('click', () => {
             light.classList.toggle('on');
             hue.set(id, light.classList.contains('on'));
         });
+        names_lights.push([value.name, light]);
     }
+    names_lights.sort();
+    names_lights.forEach(([_, light]) =>
+        document.querySelector('#lights').append(light));
+
     put_path.value = `lights/${lights[0].textContent}/state`;
     log('ready');
 }

@@ -18,6 +18,8 @@ function std(array) {
 
 export default function(ip, hueser) {
 
+    const opts = {strategy: 'sendone'};
+
     const queues = new Map();
     const inflight = new Set();
     let dropped = 0, dts = [];
@@ -35,7 +37,7 @@ export default function(ip, hueser) {
         return await resp.json();
     }
 
-    async function sendone(path) {
+    async function sendnext(path) {
         if (inflight.has(path)) return;
         const queue = queues.get(path);
         if (!queue || !queue.length) return;
@@ -44,32 +46,53 @@ export default function(ip, hueser) {
             dropped += idx;
         }
         inflight.add(path);
-        const {method, body} = queue[idx];
-        log(`${method} ${path} ${JSON.stringify(body)}`);
-        const url = `http://${ip}/api/${hueser}/${path}`;
-        const t0 = Date.now();
-        const resp = await fetch(
-            url, {
-            method,
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(body),
-        });
-        const dt = Date.now() - t0;
-        dts.push(dt);
-        if (!resp.ok) throw new Error(`resp not okay! ${resp}`);
-        const data = await resp.json();
-        log(`${dt}ms – ${JSON.stringify(data)}`);
+        await queue[idx]();
         queue.splice(0, idx + 1);
         inflight.delete(path);
-        sendone();
+        sendnext();
+    }
+
+    async function sendone(path, cb) {
+        if (!queues.has(path)) queues.set(path, []);
+        queues.get(path).push(cb);
+        sendnext(path);
+    }
+
+    let fpsps = {};
+    function fpst() {
+        Object.values(fpsps).forEach(cb => cb());
+        fpsps = {};
+        window.setTimeout(fpst, 100);
+    }
+    fpst();
+    async function fps(path, cb) {
+        fpsps.hasOwnProperty(path) && dropped++;
+        fpsps[path] = cb;
     }
 
     async function put(path, body) {
-        if (!queues.has(path)) queues.set(path, []);
-        queues.get(path).push({method: 'PUT', body});
-        sendone(path);
+        ({sendone, fps})[opts.strategy](
+            path,
+            async () => {
+                log(`PUT ${path} ${JSON.stringify(body)}`);
+                const url = `http://${ip}/api/${hueser}/${path}`;
+                const t0 = Date.now();
+                const resp = await fetch(
+                    url, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(body),
+                });
+                const dt = Date.now() - t0;
+                dts.push(dt);
+                if (!resp.ok) throw new Error(`resp not okay! ${resp}`);
+                const data = await resp.json();
+                log(`${dt}ms – ${JSON.stringify(data)}`);
+        
+            }
+        );
     }
 
     async function set(i, on) {
@@ -85,13 +108,15 @@ export default function(ip, hueser) {
 
     function stats() {
         const rd = x => Math.round(100 * x) / 100;
+        const tot = dropped + dts.length;
         return (
-            `sent ${dts.length} dropped ${rd(100*dropped/(dropped+dts.length))}% ` +
-            `dt=${rd(mean(dts))}±${rd(std(dts))}`
+            `sent ${dts.length}/${tot} (dropped ${rd(100 * dropped / tot)}%) –– ` +
+            `dt[ms] ${rd(mean(dts))}±${rd(std(dts))} ` +
+            `last=${rd(dts[dts.length - 1])} max=${rd(Math.max.apply(null, dts))}`
         );
     }
 
     return {
-        set, state, put, get, stats,
+        set, state, put, get, stats, opts,
     };
 }

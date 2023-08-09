@@ -26,11 +26,15 @@ input[type="text"] {
     @apply bg-transparent border-b border-slate-300;
     outline:none;
 }
-button {
+select,button {
     @apply
     border rounded
     border-yellow-400 text-yellow-400
     p-2 text-xs;
+}
+select {
+    @apply bg-transparent;
+    outline:none;
 }
 </style>
 
@@ -42,6 +46,10 @@ button {
 <div class="flex gap-2">
     <div class="flex gap-2" id="lights"></div>
     <div class="flex-1"></div>
+    <select id="strategy">
+        <option value="sendone">sendone</option>
+        <option value="fps">fps</option>
+    </select>
     <button id="live">live</button>
     <button id="state">state</button>
     <button id="dump">dump</button>
