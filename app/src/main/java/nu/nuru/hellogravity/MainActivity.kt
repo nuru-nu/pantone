@@ -30,17 +30,15 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import nu.nuru.hellogravity.ui.theme.HelloGravityTheme
-import java.util.UUID
-import java.util.concurrent.locks.Lock
+import java.net.*
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.util.*
 import java.util.concurrent.locks.ReentrantReadWriteLock
-import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock
 
 const val TAG = "hellogravity"
 
@@ -206,7 +204,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         dialog.show()
     }
 
-    fun tryScan() {
+    fun bluetoothInit() {
         val bluetoothAdapter = (getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter
 
         if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled) {
@@ -244,8 +242,6 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         val sensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY)
         sensorManager.registerListener(this, sensor, 10000)
 
-        tryScan()
-
         Log.v(TAG, "MainActivity.onCreate()")
         setContent {
             HelloGravityTheme {
@@ -255,7 +251,16 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                 }
             }
         }
+
+//        bluetoothInit()
+//        mdnsInit()
     }
+
+//    private fun mdnsInit() {
+//        val jmdns = JmDNSImpl.create(InetAddress.getLocalHost())
+//        val hostname = "dmxserver.local"
+//        val address = jmdns.getServiceInfo("_http._tcp.local.", hostname)?.inetAddresses?.get(0)
+//    }
 
     private val logTimers = HashMap<String, Long>()
     private fun logDebounced(message: String, debounceSecs: Float = 10.0f) {
@@ -320,7 +325,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     }
 
     @SuppressLint("MissingPermission")
-    fun lightsColor(r: Float, g: Float, b: Float) {
+    fun bluetoothColor(r: Float, g: Float, b: Float) {
         CoroutineScope(Dispatchers.IO).launch {
             val lock = reentrantLock.readLock()
             lock.lock()
@@ -340,6 +345,59 @@ class MainActivity : ComponentActivity(), SensorEventListener {
             } finally {
                 lock.unlock()
             }
+        }
+    }
+
+    private fun writeString(s: String, n: Int = 4): ByteArray {
+        require(s is String) { "s must be a String" }
+        val b = s.toByteArray(Charsets.UTF_8)
+        val diff = n - (b.size % n)
+        val padding = ByteArray(diff) { 0 }
+        return b + padding
+    }
+
+    private fun writeBlob(x: ByteArray, n: Int = 4): ByteArray {
+        require(x is ByteArray) { "x must be a ByteArray" }
+        var sz = 4 + x.size
+        if (sz % n != 0) sz += n - (sz % n)
+        val b = ByteBuffer.allocate(sz).order(ByteOrder.BIG_ENDIAN)
+        b.putInt(x.size)
+        b.put(x)
+        while (b.position() % n != 0) {
+            b.put(0)
+        }
+        return b.array()
+    }
+
+    var udpSendErrors = 0
+    var udpSocket: DatagramSocket? = null
+    suspend fun sendMessage(address: String, bs: ByteArray, ip: String, port: Int) {
+        withContext(Dispatchers.IO) {
+            val b = writeString(address) + writeString(",b") + writeBlob(bs)
+            if (udpSocket == null) {
+                udpSocket = DatagramSocket()
+            }
+            val serverAddress = InetAddress.getByName(ip)
+            val packet = DatagramPacket(b, b.size, serverAddress, port)
+            try {
+                udpSocket!!.send(packet)
+            } catch (e: Exception) {
+                udpSendErrors++
+            }
+        }
+    }
+
+    private fun udpColor(r: Float, g: Float, b: Float) {
+        val values = UByteArray(512) { 0U }
+        val toValue = { x: Float -> (x * 255).toInt().coerceIn(0, 255).toUByte() }
+        for (device in 0..10) {
+            values[device * 8 + 0] = 255U
+            values[device * 8 + 1] = toValue(r)
+            values[device * 8 + 2] = toValue(g)
+            values[device * 8 + 3] = toValue(b)
+        }
+        runBlocking {
+            sendMessage("/dmx/universe/0", values.toByteArray(), "192.168.1.41", 7770)
         }
     }
 
@@ -371,7 +429,10 @@ class MainActivity : ComponentActivity(), SensorEventListener {
 //        val l = (z+10) / 20
         i++;
 //        lightsBrightness((y + 10) / 20)
-        lightsColor(r, g, b)
+
+//        bluetoothColor(r, g, b)
+        udpColor(r, g, b)
+
         if (i % 10 == 0) {
             dispX = x
             dispY = y
@@ -387,7 +448,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
 }
 
 @Composable
-fun Greeting(backgroundColor: Color, x: Float, y: Float, z: Float, n: Int) {
+fun Greeting(backgroundColor: Color, x: Float, y: Float, z: Float, i: Int = 0, j: Int = 0) {
     var minX by remember { mutableStateOf(0.0F) }
     var maxX by remember { mutableStateOf(0.0F) }
     var minY by remember { mutableStateOf(0.0F) }
@@ -406,12 +467,12 @@ fun Greeting(backgroundColor: Color, x: Float, y: Float, z: Float, n: Int) {
                    x=%+.3f [%+.3f..%+.3f]
                    y=%+.3f [%+.3f..%+.3f]
                    z=%+.3f [%+.3f..%+.3f]
-                   n=%d
+                   i=%d j=%d
                    """.trimIndent().format(
                 x, minX, maxX,
                 y, minY, maxY,
                 z, minZ, maxZ,
-                n),
+                i, j),
             modifier = Modifier.padding(12.dp),
             fontFamily = FontFamily.Monospace
         )
@@ -422,6 +483,6 @@ fun Greeting(backgroundColor: Color, x: Float, y: Float, z: Float, n: Int) {
 @Composable
 fun DefaultPreview() {
     HelloGravityTheme {
-        Greeting( Color.Red, 0.0F, 0.0F, 0.0F, 0)
+        Greeting( Color.Red, 0.0F, 0.0F, 0.0F, 0, 0)
     }
 }
