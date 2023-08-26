@@ -38,12 +38,11 @@ const val TAG = "hellogravity"
 class MainActivity : ComponentActivity(), SensorEventListener {
 
     private var backgroundColor: Color by mutableStateOf(Color.Cyan)
-    private var dispX: Float by mutableStateOf(0.0F)
-    private var dispY: Float by mutableStateOf(0.0F)
-    private var dispZ: Float by mutableStateOf(0.0F)
     private var i = 0
+    private var dispN: Int by mutableStateOf(1)
 
-//    private val lights: LightsInterface = LightsBluetooth(this)
+
+    //    private val lights: LightsInterface = LightsBluetooth(this)
     private val lights: LightsInterface = LightsOsc("/dmx/universe/0", "192.168.1.41")
 
     private var valuesLogger: ValuesLogger? = null
@@ -68,22 +67,23 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         super.onCreate(savedInstanceState)
 
         val sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
-        val sensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY)
-        sensorManager.registerListener(this, sensor, 10000)
+        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY), 10000)
+        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), 10000)
+        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE), 10000)
 
         Log.v(TAG, "MainActivity.onCreate()")
         setContent {
             HelloGravityTheme {
                 // A surface container using the 'background' color from the theme
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colors.background) {
-                    Greeting(backgroundColor, dispX, dispY, dispZ, lights.getI())
+                    Greeting(dispN, backgroundColor, sensorData, lights.getI())
                 }
             }
         }
 
         valuesLogger = ValuesLogger(
             getExternalFilesDir(null) ?: this.filesDir,
-            listOf("t", "x", "y", "z")
+            listOf("t") + SensorData.getColumns()
         )
         handler.postDelayed(runnable, 1000)
 
@@ -96,25 +96,26 @@ class MainActivity : ComponentActivity(), SensorEventListener {
 //    }
 
     private val toColor = ToColor()
+
+    val sensorData = SensorData()
+    val t0 = System.currentTimeMillis()
     override fun onSensorChanged(e: SensorEvent?) {
 
-        val x = e!!.values[0]
-        val y = e!!.values[1]
-        val z = e!!.values[2]
+        if (e == null) return
+        sensorData.update(e)
+        if (e.sensor.type != Sensor.TYPE_GRAVITY) return
 
-        valuesLogger!!.log(floatArrayOf(Instant.now().nano / 1e9f, x, y, z))
+        val t = (System.currentTimeMillis() - t0) / 1e3f
+        valuesLogger!!.log(floatArrayOf(t) + sensorData.getValues())
 
-        val (r, g, b) = toColor.zToRb(x, y, z);
+        val (r, g, b) = toColor.zToRb(sensorData);
 
         i++;
 
         lights.setColor(LightColor(r, g, b))
 
         if (i % 10 == 0) {
-            dispX = x
-            dispY = y
-            dispZ = z
-//            Log.v(TAG, "x=$x y=$y z=$z h=$h s=$s l=$l")
+            dispN++
         }
         backgroundColor = Color(clip01(r), clip01(g), clip01(b))
     }
@@ -125,31 +126,10 @@ class MainActivity : ComponentActivity(), SensorEventListener {
 }
 
 @Composable
-fun Greeting(backgroundColor: Color, x: Float, y: Float, z: Float, i: Int = 0, j: Int = 0) {
-    var minX by remember { mutableStateOf(0.0F) }
-    var maxX by remember { mutableStateOf(0.0F) }
-    var minY by remember { mutableStateOf(0.0F) }
-    var maxY by remember { mutableStateOf(0.0F) }
-    var minZ by remember { mutableStateOf(0.0F) }
-    var maxZ by remember { mutableStateOf(0.0F) }
+fun Greeting(n: Int = 0, backgroundColor: Color = Color.White, data: SensorData = SensorData(), i: Int = 0, j: Int = 0) {
     Surface(color = backgroundColor) {
-        minX = Math.min(x, minX)
-        maxX = Math.max(x, maxX)
-        minY = Math.min(y, minY)
-        maxY = Math.max(y, maxY)
-        minZ = Math.min(z, minZ)
-        maxZ = Math.max(z, maxZ)
         Text(
-            text = """
-                   x=%+.3f [%+.3f..%+.3f]
-                   y=%+.3f [%+.3f..%+.3f]
-                   z=%+.3f [%+.3f..%+.3f]
-                   i=%d j=%d
-                   """.trimIndent().format(
-                x, minX, maxX,
-                y, minY, maxY,
-                z, minZ, maxZ,
-                i, j),
+            text = data.serializeMultiline() + "\ni=$i j=$j\nn=$n",
             modifier = Modifier.padding(12.dp),
             fontFamily = FontFamily.Monospace
         )
@@ -160,6 +140,6 @@ fun Greeting(backgroundColor: Color, x: Float, y: Float, z: Float, i: Int = 0, j
 @Composable
 fun DefaultPreview() {
     HelloGravityTheme {
-        Greeting( Color.Red, 0.0F, 0.0F, 0.0F)
+        Greeting()
     }
 }
