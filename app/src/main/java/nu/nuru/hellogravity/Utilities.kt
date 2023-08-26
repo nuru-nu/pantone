@@ -44,7 +44,7 @@ class HysteresisLogger(val value1: Float = 0.8f, val value2: Float = 0.9f) {
 }
 
 fun formatInstant(instant: Instant): String {
-    val formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss").withZone(ZoneOffset.UTC)
+    val formatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss").withZone(ZoneOffset.UTC)
     return formatter.format(instant)
 }
 
@@ -55,7 +55,7 @@ class ValuesLogger(val directory: File, val columns: List<String>) {
     var written = 0
 
     init {
-        Log.v(TAG, "directory=${directory}")
+        Log.v(TAG, "logging values ${columns.joinToString(",") }} to ${directory}")
     }
 
     fun log(values: FloatArray) {
@@ -77,7 +77,7 @@ class ValuesLogger(val directory: File, val columns: List<String>) {
         }
         try {
             file.appendText(content.toString())
-            Log.i(TAG, "wrote $lines lines to $filename / ${file.path}")
+            Log.i(TAG, "wrote $lines lines to $filename")
             rows.clear()
             written += lines
         } catch (e: Exception) {
