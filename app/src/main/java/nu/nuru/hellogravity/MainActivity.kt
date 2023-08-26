@@ -7,6 +7,8 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -27,6 +29,7 @@ import nu.nuru.hellogravity.lights.LightsInterface
 import nu.nuru.hellogravity.lights.LightsOsc
 import nu.nuru.hellogravity.ui.theme.HelloGravityTheme
 import java.net.*
+import java.time.Instant
 import java.util.*
 
 const val TAG = "hellogravity"
@@ -42,6 +45,17 @@ class MainActivity : ComponentActivity(), SensorEventListener {
 
 //    private val lights: LightsInterface = LightsBluetooth(this)
     private val lights: LightsInterface = LightsOsc("/dmx/universe/0", "192.168.1.41")
+
+    private var valuesLogger: ValuesLogger? = null
+    private val handler = Handler(Looper.getMainLooper())
+
+    private val runnable = object : Runnable {
+        override fun run() {
+            valuesLogger!!.write()
+            handler.postDelayed(this, 10000)
+        }
+    }
+
 
     @Suppress("DEPRECATION")
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -67,6 +81,12 @@ class MainActivity : ComponentActivity(), SensorEventListener {
             }
         }
 
+        valuesLogger = ValuesLogger(
+            getExternalFilesDir(null) ?: this.filesDir,
+            listOf("t", "x", "y", "z")
+        )
+        handler.postDelayed(runnable, 1000)
+
     }
 
 //    private fun mdnsInit() {
@@ -78,10 +98,11 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     private val toColor = ToColor()
     override fun onSensorChanged(e: SensorEvent?) {
 
-
         val x = e!!.values[0]
         val y = e!!.values[1]
         val z = e!!.values[2]
+
+        valuesLogger!!.log(floatArrayOf(Instant.now().nano / 1e9f, x, y, z))
 
         val (r, g, b) = toColor.zToRb(x, y, z);
 

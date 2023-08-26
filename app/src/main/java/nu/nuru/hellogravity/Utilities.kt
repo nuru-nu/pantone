@@ -3,7 +3,10 @@ package nu.nuru.hellogravity
 import android.util.Log
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import java.util.HashMap
+import java.io.File
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 fun clip01(v: Float) = v.coerceAtLeast(0.0F).coerceAtMost(1.0F)
 
@@ -36,6 +39,50 @@ class HysteresisLogger(val value1: Float = 0.8f, val value2: Float = 0.9f) {
             if (timers[device] == true && x > value2) {
                 Log.v(TAG, "logHyst: $device OFF->ON")
             }
+        }
+    }
+}
+
+fun formatInstant(instant: Instant): String {
+    val formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss").withZone(ZoneOffset.UTC)
+    return formatter.format(instant)
+}
+
+
+class ValuesLogger(val directory: File, val columns: List<String>) {
+    private val now = Instant.now()
+    val rows: MutableList<FloatArray> = arrayListOf()
+    var written = 0
+
+    init {
+        Log.v(TAG, "directory=${directory}")
+    }
+
+    fun log(values: FloatArray) {
+        rows.add(values)
+    }
+
+    fun write() {
+        val filename = "values_${formatInstant(now)}.csv"
+        val file = File(directory, filename)
+        val content = StringBuilder()
+        var lines = 0
+        if (written == 0) {
+            content.appendLine(columns.joinToString(","))
+            lines++
+        }
+        for (row in rows) {
+            content.appendLine(row.joinToString(",") { it.toString() })
+            lines++
+        }
+        try {
+            file.appendText(content.toString())
+            Log.i(TAG, "wrote $lines lines to $filename / ${file.path}")
+            rows.clear()
+            written += lines
+        } catch (e: Exception) {
+            Log.e(TAG, "could not write values: ${e.message}")
+            e.printStackTrace()
         }
     }
 }
