@@ -48,41 +48,59 @@ fun formatInstant(instant: Instant): String {
     return formatter.format(instant)
 }
 
-
 class ValuesLogger(val directory: File, val columns: List<String>) {
-    private val now = Instant.now()
-    val rows: MutableList<FloatArray> = arrayListOf()
-    var written = 0
-
-    init {
-        Log.v(TAG, "logging values ${columns.joinToString(",") }} to ${directory}")
-    }
+    private var started: Instant? = null
+    private val rows: MutableList<FloatArray> = arrayListOf()
+    private var written = 0
+    private val lock = Any()
 
     fun log(values: FloatArray) {
+        if (started == null) return
         rows.add(values)
     }
 
-    fun write() {
-        val filename = "values_${formatInstant(now)}.csv"
-        val file = File(directory, filename)
-        val content = StringBuilder()
-        var lines = 0
-        if (written == 0) {
-            content.appendLine(columns.joinToString(","))
-            lines++
-        }
-        for (row in rows) {
-            content.appendLine(row.joinToString(",") { it.toString() })
-            lines++
-        }
-        try {
-            file.appendText(content.toString())
-            Log.i(TAG, "wrote $lines lines to $filename")
+    fun start() {
+        synchronized(lock) {
+            if (started != null) return
             rows.clear()
-            written += lines
-        } catch (e: Exception) {
-            Log.e(TAG, "could not write values: ${e.message}")
-            e.printStackTrace()
+            started = Instant.now()
+        }
+        Log.i(TAG, "started logging ${columns.joinToString(",") } to $directory")
+    }
+
+    fun stop() {
+        synchronized(lock) {
+            if (started == null) return
+            write()
+            started = null
+        }
+        Log.i(TAG, "stopped logging")
+    }
+
+    fun write() {
+        synchronized(lock) {
+            if (started == null) return
+            val filename = "values_${formatInstant(started!!)}.csv"
+            val file = File(directory, filename)
+            val content = StringBuilder()
+            var lines = 0
+            if (written == 0) {
+                content.appendLine(columns.joinToString(","))
+                lines++
+            }
+            for (row in rows) {
+                content.appendLine(row.joinToString(",") { it.toString() })
+                lines++
+            }
+            try {
+                file.appendText(content.toString())
+                Log.i(TAG, "wrote $lines lines to $filename")
+                rows.clear()
+                written += lines
+            } catch (e: Exception) {
+                Log.e(TAG, "could not write values: ${e.message}")
+                e.printStackTrace()
+            }
         }
     }
 }

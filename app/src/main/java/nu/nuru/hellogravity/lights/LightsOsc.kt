@@ -1,18 +1,23 @@
 package nu.nuru.hellogravity.lights
 
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import nu.nuru.hellogravity.TAG
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-class LightsOsc(val oscAddress: String, val ip: String, val port: Int = 7770): LightsInterface {
+class LightsOsc(
+    val oscAddress: String = "/dmx/universe/0",
+    val port: Int = 7770,
+): LightsInterface {
     var udpSendErrors = 0
-    val serverAddress = InetAddress.getByName(ip)
     var udpSocket: DatagramSocket = DatagramSocket()
+    var serverAddress: InetAddress? = null
 
     override fun getI(): Int {
         return udpSendErrors
@@ -28,7 +33,7 @@ class LightsOsc(val oscAddress: String, val ip: String, val port: Int = 7770): L
             values[device * 8 + 3] = toValue(color.b)
         }
         runBlocking {
-            sendMessage(oscAddress, values.toByteArray(), ip, port)
+            sendMessage(oscAddress, values.toByteArray())
         }
     }
 
@@ -53,7 +58,8 @@ class LightsOsc(val oscAddress: String, val ip: String, val port: Int = 7770): L
         return b.array()
     }
 
-    private suspend fun sendMessage(address: String, bs: ByteArray, ip: String, port: Int) {
+    private suspend fun sendMessage(address: String, bs: ByteArray) {
+        if (serverAddress == null) return
         withContext(Dispatchers.IO) {
             val b = writeString(address) + writeString(",b") + writeBlob(bs)
             val packet = DatagramPacket(b, b.size, serverAddress, port)
@@ -63,5 +69,14 @@ class LightsOsc(val oscAddress: String, val ip: String, val port: Int = 7770): L
                 udpSendErrors++
             }
         }
+    }
+
+    override fun setServerIp(ip: String?) {
+        if (ip == null) {
+            serverAddress = null
+        } else {
+            serverAddress = InetAddress.getByName(ip)
+        }
+        Log.i(TAG, "LightsOsc: updated serverIp=$ip")
     }
 }

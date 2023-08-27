@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <CheckBoxPreference
+        android:defaultValue="false"
+        android:key="@string/preferences_log_csv"
+        android:title="Log Values as CSV" />
+    <EditTextPreference
+        android:defaultValue="192.168.0.1"
+        android:key="@string/preferences_dmxserver_ip"
+        android:selectAllOnFocus="true"
+        android:singleLine="true"
+        android:title="DMX Server IP" />
+</PreferenceScreen>

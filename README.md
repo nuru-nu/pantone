@@ -2,6 +2,43 @@
 
 Simple Android app to control light by motion.
 
+## DMX: OLA Server
+
+OLA Server can be installed on a Raspberry Pi, and comes shipped with an OSC
+plugin. We use a very simple setup, where we send a binary blob via OSC and
+those values directly update the DMX channels via a connected Enttec interface
+(note that "Enttec DMX USB Pro" interface works out of the box and contains a
+chip that emulates a serial interface, while the cheaper "Enttec Opendmx USB"
+requires some extra driver and does *not* work out of the box on Linux!)
+
+The setup is as follows:
+
+1. Connect to Rasperry Pi and set up wifis via `raspi-config`.
+2. For debugging, OLA server can be started manually via
+   `sudo service olad stop` and
+   `/usr/bin/olad --config-dir /etc/ola --log-level 4`
+3. OLA interface: connect OSC input to ENTTEC. This configuration can be
+   persisted manually by  (assuming OSC is plugin 14 mapping on universe 0)
+   `echo '14-1-I-0 = 0' >> /etc/ola/ola-port.conf`
+4. Configure Parcans to be at A0001, A0008 etc (assuming first 4 channels are
+   DRGB).
+
+Run it:
+
+1. Get Raspberry Pi address via `ping -c1 dmxserver.local` and update this in
+   app's UI.
+2. Check `http://dmxserver.local:9090` that we have enttec universe with OSC
+   input port.
+3. Observe DMX Monitor while running app.
+
+## Bluetooth
+
+WARNING: It turned out that Philips Hue style lamps controlled via Bluetooth
+scale really poorly. We also tried using a Philips Hue bridge, but that system
+also failed to deliver anything resembling real time updates. There is still
+some old code for controlling a system via bluetooth, but it has not been kept
+up to date with later changes.
+
 Connect lights
 
 1. Activate Bluetooth
