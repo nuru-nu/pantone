@@ -27,10 +27,12 @@ class MyApplication: Application() {
 
 class ApplicationModel : ViewModel() {
     val name = formatInstant(Instant.now())
-    val liveData: MutableLiveData<SensorAndColor> = MutableLiveData()
+    val liveData: MutableLiveData<ServiceState> = MutableLiveData()
 }
 
-data class SensorAndColor(
-    val sensorData: SensorData,
-    val color: Color,
+data class ServiceState(
+    val sensorData: SensorData = SensorData(),
+    val color: Color = Color.Black,
+    val stats: NetworkStats = NetworkStats(),
+    val connectionStatus: String = "?",
     )

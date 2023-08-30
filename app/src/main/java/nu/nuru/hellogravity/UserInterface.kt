@@ -25,19 +25,24 @@ import nu.nuru.hellogravity.ui.theme.HelloGravityTheme
 fun UserInterface(
     context: MainActivity? = null,
     n: Int = 0,
-    backgroundColor: Color = Color.Magenta,
-    data: SensorData = SensorData(),
-    i: Int = 0, j: Int = 0
+    serviceState: ServiceState = ServiceState(),
 ) {
-    Surface(color = backgroundColor) {
+    Surface(color = serviceState.color) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
 
+            val text = (
+                "n=${n}\n" +
+                serviceState.sensorData.serializeMultiline() + "\n\n" +
+                serviceState.stats.toString() + "\n\n" +
+                serviceState.connectionStatus
+            )
+
             Text(
-                text = data.serializeMultiline() + "\ni=$i j=$j\nn=$n",
+                text = text,
                 modifier = Modifier.padding(12.dp),
                 fontFamily = FontFamily.Monospace
             )

@@ -23,7 +23,7 @@ class LightsOsc(
         return udpSendErrors
     }
 
-    override fun setColor(color: LightColor) {
+    override fun setColor(color: LightColor): Int {
         val values = UByteArray(512) { 0U }
         val toValue = { x: Float -> (x * 255).toInt().coerceIn(0, 255).toUByte() }
         for (device in 0..10) {
@@ -35,6 +35,7 @@ class LightsOsc(
         runBlocking {
             sendMessage(oscAddress, values.toByteArray())
         }
+        return values.size
     }
 
     private fun writeString(s: String, n: Int = 4): ByteArray {

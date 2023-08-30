@@ -48,6 +48,33 @@ fun formatInstant(instant: Instant): String {
     return formatter.format(instant)
 }
 
+class NetworkStats(val interruptionSecs: Float = 1F) {
+    private var totalBytes = 0L
+    private var totalMillis = 0L
+    private var lt = System.currentTimeMillis()
+
+    fun add(bytes: Int) { add(bytes.toLong()) }
+
+    fun add(bytes: Long) {
+        val t = System.currentTimeMillis()
+        val dt = t - lt
+        lt = t
+        if (dt > 1000 * interruptionSecs) return
+        totalBytes += bytes
+        totalMillis += dt
+    }
+
+    override fun toString(): String {
+        val secs = totalMillis / 1000
+        return "%.1f KB/s (%.1f MB in %d:%d)".format(
+            totalBytes.toFloat() / 1L.coerceAtLeast(secs) / 1000,
+            totalBytes.toFloat() / 1e6,
+            secs / 60,
+            secs % 60,
+        )
+    }
+}
+
 class ValuesLogger(val directory: File, val columns: List<String>) {
     private var started: Instant? = null
     private val rows: MutableList<FloatArray> = arrayListOf()

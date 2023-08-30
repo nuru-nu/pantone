@@ -20,6 +20,9 @@ import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.preference.PreferenceManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import nu.nuru.hellogravity.lights.LightColor
 import nu.nuru.hellogravity.lights.LightsInterface
 import nu.nuru.hellogravity.lights.LightsOsc
@@ -28,11 +31,14 @@ class SensorService: Service(), SensorEventListener, SharedPreferences.OnSharedP
 
     private lateinit var sensorManager: SensorManager
     private lateinit var model : ApplicationModel
+    private val tcpClient = TcpClient()
 
     private lateinit var valuesLogger: ValuesLogger
+    private lateinit var prefs: SharedPreferences
     private val handler = Handler(Looper.getMainLooper())
 
     private val lights: LightsInterface = LightsOsc()
+    private val stats = NetworkStats()
 
     private val runnable = object : Runnable {
         override fun run() {
@@ -60,12 +66,37 @@ class SensorService: Service(), SensorEventListener, SharedPreferences.OnSharedP
         )
         handler.postDelayed(runnable, 1000)
 
-        val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+        prefs = PreferenceManager.getDefaultSharedPreferences(applicationContext)
         prefs.registerOnSharedPreferenceChangeListener(this)
         if (prefs.getBoolean(getString(R.string.preferences_log_csv), false)) {
             valuesLogger.start()
         }
-        lights.setServerIp(prefs.getString(getString(R.string.preferences_dmxserver_ip), null))
+        val serverIp = prefs.getString(getString(R.string.preferences_dmxserver_ip), null)
+        lights.setServerIp(serverIp)
+
+        tcpClient.registerListener(object: TcpClientListener {
+            private fun maybeSetStreaming(value: Boolean, reason: String) {
+                val coordinating = prefs.getBoolean(
+                    getString(R.string.preferences_coordinate), false
+                )
+                if (!coordinating) return
+                Log.i(TAG, "SensorService: coordinated $reason => stream=$value")
+                prefs.edit().putBoolean(
+                    getString(R.string.preferences_stream), value
+                ).commit()
+            }
+            override fun addressChanged(address: String?) { }
+            override fun inControlChanged(inControl: Boolean) {
+                maybeSetStreaming(inControl, "inControl")
+            }
+            override fun connectedChanged(connected: Boolean) {
+                maybeSetStreaming(connected, "connected")
+            }
+        })
+
+        GlobalScope.launch(Dispatchers.IO) {
+//            tcpClient.connect(serverIp)
+        }
     }
 
     override fun onSharedPreferenceChanged(prefs: SharedPreferences?, key: String?) {
@@ -74,7 +105,11 @@ class SensorService: Service(), SensorEventListener, SharedPreferences.OnSharedP
             if (prefs.getBoolean(key, false)) valuesLogger.start() else valuesLogger.stop()
         }
         if (key == getString(R.string.preferences_dmxserver_ip)) {
-            lights.setServerIp(prefs.getString(key, null))
+            val serverIp = prefs.getString(key, null)
+            lights.setServerIp(serverIp)
+            GlobalScope.launch(Dispatchers.IO) {
+//                tcpClient.connect(serverIp)
+            }
         }
     }
 
@@ -104,22 +139,27 @@ class SensorService: Service(), SensorEventListener, SharedPreferences.OnSharedP
 
         val color = toColor.getColor(sensorData)
 
-        lights.setColor(LightColor(color.red, color.green, color.blue))
+        if (prefs.getBoolean(getString(R.string.preferences_stream), false)) {
+            val bytes = lights.setColor(LightColor(color.red, color.green, color.blue))
+            stats.add(bytes)
+        }
 
         i++
         if (i % 10 == 0) {
-            model.liveData.postValue(SensorAndColor(
+            model.liveData.postValue(ServiceState(
                 sensorData,
                 color,
+                stats,
+                tcpClient.getStatus(),
             ))
-            debouncedLogger.log("SensorService: posted live data")
+//            debouncedLogger.log("SensorService: posted live data")
         }
     }
 
     val debouncedLogger = DebouncedLogger(5F)
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
-        Log.i(TAG, "SensorService: onAccuracyChanged")
+        Log.i(TAG, "SensorService: onAccuracyChanged type=${sensor?.type}")
     }
 
     private fun createNotification(): Notification {

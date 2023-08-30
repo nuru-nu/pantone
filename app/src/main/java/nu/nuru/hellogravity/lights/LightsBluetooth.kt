@@ -27,7 +27,9 @@ import java.util.concurrent.locks.ReentrantReadWriteLock
  * This is a rather hacky Bluetooth -> Philips Hue implementation. It kind of works, but the bulbs
  * are really not very reactive and become very unreliable with n>2.
  */
-class LightsBluetooth(val activity: ComponentActivity) : LightsInterface {
+class LightsBluetooth(val activity: ComponentActivity)
+//    : LightsInterface
+{
     private var bluetoothGatts: MutableMap<String, BluetoothGatt> = mutableMapOf()
     private val permissions = arrayOf(
         Manifest.permission.BLUETOOTH_SCAN,
@@ -42,11 +44,11 @@ class LightsBluetooth(val activity: ComponentActivity) : LightsInterface {
 
     private val BT_SCAN_REQUEST_CODE = 1
 
-    override fun getI(): Int {
+    fun getI(): Int {
         return nConnected
     }
 
-    override fun init() {
+    fun init() {
         val bluetoothAdapter = (activity.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter
 
         if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled) {
@@ -61,7 +63,7 @@ class LightsBluetooth(val activity: ComponentActivity) : LightsInterface {
     }
 
     @SuppressLint("MissingPermission")
-    override fun setColor(color: LightColor) {
+    fun setColor(color: LightColor) {
         CoroutineScope(Dispatchers.IO).launch {
             val lock = reentrantLock.readLock()
             lock.lock()
@@ -84,7 +86,7 @@ class LightsBluetooth(val activity: ComponentActivity) : LightsInterface {
         }
     }
 
-    override fun onRequestPermissionsResult(
+    fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
         grantResults: IntArray

@@ -11,7 +11,7 @@ data class LightColor(val r: Float, val g: Float, val b: Float) {
 interface LightsInterface {
     fun init() {}
     fun setServerIp(ip: String?) {}
-    fun setColor(color: LightColor)
+    fun setColor(color: LightColor): Int
     // Returns true if permission request was handled (i.e. if
     fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray): Boolean {
         return false

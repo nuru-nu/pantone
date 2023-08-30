@@ -21,7 +21,7 @@ const val TAG = "hellogravity"
 class MainActivity : ComponentActivity() { //, SensorEventListener {
 
     private var dispN: Int by mutableStateOf(1)  // triggers UI update
-    private var sensorAndColor = SensorAndColor(SensorData(), Color.LightGray)
+    private var serviceState = ServiceState(SensorData(), Color.LightGray)
 
     fun startService() {
         val serviceIntent = Intent(this, SensorService::class.java)
@@ -47,13 +47,13 @@ class MainActivity : ComponentActivity() { //, SensorEventListener {
             HelloGravityTheme {
                 // A surface container using the 'background' color from the theme
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    UserInterface(this, dispN, sensorAndColor.color, sensorAndColor.sensorData)
+                    UserInterface(this, dispN, serviceState)
                 }
             }
         }
 
         (application as MyApplication).sharedViewModel.liveData.observe(this) { data ->
-            sensorAndColor = data
+            serviceState = data
             dispN++
         }
     }
