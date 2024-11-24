@@ -11,6 +11,9 @@ import java.net.InetAddress
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
+/**
+ * Sends light commands as OSC messages to OLA server.
+ */
 class LightsOsc(
     val oscAddress: String = "/dmx/universe/0",
     val port: Int = 7770,
@@ -27,10 +30,10 @@ class LightsOsc(
         val values = UByteArray(512) { 0U }
         val toValue = { x: Float -> (x * 255).toInt().coerceIn(0, 255).toUByte() }
         for (device in 0..10) {
-            values[device * 8 + 0] = 255U
-            values[device * 8 + 1] = toValue(color.r)
-            values[device * 8 + 2] = toValue(color.g)
-            values[device * 8 + 3] = toValue(color.b)
+            values[device * 8 + 0] = toValue(color.r)
+            values[device * 8 + 1] = toValue(color.g)
+            values[device * 8 + 2] = toValue(color.b)
+            values[device * 8 + 3] = 0U
         }
         runBlocking {
             sendMessage(oscAddress, values.toByteArray())
