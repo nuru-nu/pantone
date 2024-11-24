@@ -14,14 +14,13 @@ requires some extra driver and does *not* work out of the box on Linux!)
 The setup is as follows:
 
 1. Connect to Rasperry Pi and set up wifis via `raspi-config`.
-2. For debugging, OLA server can be started manually via
-   `sudo service olad stop` and
+2. For debugging (e.g. checking for OSC messages), OLA server can be started
+   manually via `sudo service olad stop` followed by
    `/usr/bin/olad --config-dir /etc/ola --log-level 4`
-3. OLA interface: connect OSC input to ENTTEC. This configuration can be
-   persisted manually by  (assuming OSC is plugin 14 mapping on universe 0)
-   `echo '14-1-I-0 = 0' >> /etc/ola/ola-port.conf`
-4. Configure Parcans to be at A0001, A0008 etc (assuming first 4 channels are
-   DRGB).
+3. OLA web UI: Make sure USB Serial plugin is working, since this is the plugin
+   handling the "Enttec DMX USB Pro" (`/etc/ola/ola-usbserial.conf`).
+4. OLA web UI: Create universe 0, select OSC as input, and Enttec as output. 
+5. Configure Parcans to be at `d0001` (or `d0009` etc).
 
 Run it:
 
@@ -29,7 +28,7 @@ Run it:
    app's UI.
 2. Check `http://dmxserver.local:9090` that we have enttec universe with OSC
    input port.
-3. Observe DMX Monitor while running app.
+3. Observe DMX Monitor while running app. Make sure parcan colors match.
 
 ## Bluetooth
 
