@@ -23,9 +23,6 @@ import androidx.preference.PreferenceManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import nu.nuru.hellogravity.lights.LightColor
-import nu.nuru.hellogravity.lights.LightsInterface
-import nu.nuru.hellogravity.lights.LightsOsc
 
 class SensorService: Service(), SensorEventListener, SharedPreferences.OnSharedPreferenceChangeListener {
 
@@ -37,7 +34,6 @@ class SensorService: Service(), SensorEventListener, SharedPreferences.OnSharedP
     private lateinit var prefs: SharedPreferences
     private val handler = Handler(Looper.getMainLooper())
 
-    private val lights: LightsInterface = LightsOsc()
     private val stats = NetworkStats()
 
     private val runnable = object : Runnable {
@@ -72,7 +68,6 @@ class SensorService: Service(), SensorEventListener, SharedPreferences.OnSharedP
             valuesLogger.start()
         }
         val serverIp = prefs.getString(getString(R.string.preferences_dmxserver_ip), null)
-        lights.setServerIp(serverIp)
 
         client.registerListener(object: TcpClientListener {
             private fun maybeSetStreaming(value: Boolean, reason: String) {
@@ -106,7 +101,6 @@ class SensorService: Service(), SensorEventListener, SharedPreferences.OnSharedP
         }
         if (key == getString(R.string.preferences_dmxserver_ip)) {
             val serverIp = prefs.getString(key, null)
-            lights.setServerIp(serverIp)
             GlobalScope.launch(Dispatchers.IO) {
                 client.connect(serverIp)
             }
@@ -134,16 +128,13 @@ class SensorService: Service(), SensorEventListener, SharedPreferences.OnSharedP
         sensorData.update(e)
         if (e.sensor.type != Sensor.TYPE_GRAVITY) return
 
-        client.sendSensordata(sensorData)
-
         val t = (System.currentTimeMillis() - t0) / 1e3f
         valuesLogger!!.log(floatArrayOf(t) + sensorData.getValues())
 
         val color = toColor.getColor(sensorData)
 
         if (prefs.getBoolean(getString(R.string.preferences_stream), false)) {
-            val bytes = lights.setColor(LightColor(color.red, color.green, color.blue))
-            stats.add(bytes)
+            client.sendSensordata(sensorData)
         }
 
         i++

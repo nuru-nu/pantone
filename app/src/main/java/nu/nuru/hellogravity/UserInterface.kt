@@ -35,7 +35,7 @@ fun UserInterface(
         ) {
 
             val text = (
-                "v=2\n\n" +
+                "v=3\n\n" +
                 "n=${n}\n" +
                 serviceState.sensorData.serializeMultiline() + "\n\n" +
                 serviceState.stats.toString() + "\n\n" +
