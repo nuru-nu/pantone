@@ -3,6 +3,7 @@ package nu.nuru.hellogravity
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import androidx.compose.ui.graphics.Color
+import java.nio.ByteBuffer
 
 data class SensorData(
     // TYPE_GRAVITY
@@ -58,6 +59,22 @@ data class SensorData(
             ry = e.values[1]
             rz = e.values[2]
         }
+    }
+
+    fun toByteArray(): ByteArray {
+        // Each float is 4 bytes, and we have 9 float values
+        return ByteBuffer.allocate(9 * 4).apply {
+            // Write all values in order
+            putFloat(gx)
+            putFloat(gy)
+            putFloat(gz)
+            putFloat(ax)
+            putFloat(ay)
+            putFloat(az)
+            putFloat(rx)
+            putFloat(ry)
+            putFloat(rz)
+        }.array()
     }
 }
 

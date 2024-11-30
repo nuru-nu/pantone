@@ -1,12 +1,19 @@
 package nu.nuru.hellogravity
 
 import android.util.Log
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
+import java.net.DatagramPacket
+import java.net.DatagramSocket
+import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.util.Timer
@@ -19,11 +26,17 @@ interface TcpClientListener {
     fun connectedChanged(connected: Boolean);
 }
 
-class TcpClient(
-    private val serverPort: Int = 9000,
+class Client(
+    private val tcpPort: Int = 9000,
+    private val udpPort: Int = 9001,
 ) {
 
     private var serverIp: String? = null
+    private var udpSocket: DatagramSocket = DatagramSocket()
+    private var serverAddress: InetAddress? = null
+    private var udpSent = 0
+    private var udpSendErrors = 0
+    val networkScope = CoroutineScope(Dispatchers.IO)
     private var socket: Socket? = null
     private var reader: BufferedReader? = null
     private var writer: OutputStreamWriter? = null
@@ -56,10 +69,11 @@ class TcpClient(
             serverIp = newServerIp
             reset()
             if (serverIp == null) return false
+            serverAddress = InetAddress.getByName(serverIp)
 
             try {
                 socket = Socket()
-                socket!!.connect(InetSocketAddress(serverIp, serverPort), timeoutMillis)
+                socket!!.connect(InetSocketAddress(serverIp, tcpPort), timeoutMillis)
                 reader = BufferedReader(InputStreamReader(socket?.getInputStream()))
                 writer = OutputStreamWriter(socket?.getOutputStream())
                 if (updateFromJson(reader?.readLine(), true)) {
@@ -77,14 +91,29 @@ class TcpClient(
         return false
     }
 
+    fun sendSensordata(sensorDate: SensorData) {
+        if (serverAddress == null) return
+        val b = sensorDate.toByteArray()
+        val packet = DatagramPacket(b, b.size, serverAddress, udpPort)
+        networkScope.launch {
+            try {
+                udpSocket.send(packet)
+                udpSent++
+            } catch (e: Exception) {
+                udpSendErrors++
+            }
+        }
+    }
+
     fun getStatus(): String {
-        return "ip=$serverIp connected=$connected pings=$pings address=$address inControl=$inControl retries=$retries"
+        return "ip=$serverIp connected=$connected pings=$pings address=$address inControl=$inControl retries=$retries udp=$udpSent/$udpSendErrors"
     }
 
     fun registerListener(listener: TcpClientListener) { listeners.add(listener) }
     fun unregisterListener(listener: TcpClientListener) { listeners.remove(listener) }
 
     private fun updateFromJson(json: String?, setAddress: Boolean = false): Boolean {
+        if (json == null) return false
         try {
             data = JSONObject(json)
             val connected = data.getJSONArray("connected")
@@ -158,6 +187,9 @@ class TcpClient(
             setConnected(false)
             setAddress(null)
             pings = 0
+            serverAddress = null
+            udpSendErrors = 0
+            udpSent = 0
         }
     }
 

@@ -31,7 +31,7 @@ class SensorService: Service(), SensorEventListener, SharedPreferences.OnSharedP
 
     private lateinit var sensorManager: SensorManager
     private lateinit var model : ApplicationModel
-    private val tcpClient = TcpClient()
+    private val client = Client()
 
     private lateinit var valuesLogger: ValuesLogger
     private lateinit var prefs: SharedPreferences
@@ -74,7 +74,7 @@ class SensorService: Service(), SensorEventListener, SharedPreferences.OnSharedP
         val serverIp = prefs.getString(getString(R.string.preferences_dmxserver_ip), null)
         lights.setServerIp(serverIp)
 
-        tcpClient.registerListener(object: TcpClientListener {
+        client.registerListener(object: TcpClientListener {
             private fun maybeSetStreaming(value: Boolean, reason: String) {
                 val coordinating = prefs.getBoolean(
                     getString(R.string.preferences_coordinate), false
@@ -95,7 +95,7 @@ class SensorService: Service(), SensorEventListener, SharedPreferences.OnSharedP
         })
 
         GlobalScope.launch(Dispatchers.IO) {
-//            tcpClient.connect(serverIp)
+            client.connect(serverIp)
         }
     }
 
@@ -108,7 +108,7 @@ class SensorService: Service(), SensorEventListener, SharedPreferences.OnSharedP
             val serverIp = prefs.getString(key, null)
             lights.setServerIp(serverIp)
             GlobalScope.launch(Dispatchers.IO) {
-//                tcpClient.connect(serverIp)
+                client.connect(serverIp)
             }
         }
     }
@@ -134,6 +134,8 @@ class SensorService: Service(), SensorEventListener, SharedPreferences.OnSharedP
         sensorData.update(e)
         if (e.sensor.type != Sensor.TYPE_GRAVITY) return
 
+        client.sendSensordata(sensorData)
+
         val t = (System.currentTimeMillis() - t0) / 1e3f
         valuesLogger!!.log(floatArrayOf(t) + sensorData.getValues())
 
@@ -150,7 +152,7 @@ class SensorService: Service(), SensorEventListener, SharedPreferences.OnSharedP
                 sensorData,
                 color,
                 stats,
-                tcpClient.getStatus(),
+                client.getStatus(),
             ))
 //            debouncedLogger.log("SensorService: posted live data")
         }
