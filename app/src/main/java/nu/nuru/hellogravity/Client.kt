@@ -4,7 +4,6 @@ import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.BufferedReader
@@ -124,7 +123,7 @@ class Client(
             setInControl(address == controlling)
             pings++
         } catch (e: JSONException) {
-            Log.e(TAG, "TcpClient: Cannot parse JSON (${json?.length} bytes): $e")
+            Log.e(TAG, "TcpClient: Cannot parse JSON (${json.length} bytes): $e")
             return false
         }
         return true

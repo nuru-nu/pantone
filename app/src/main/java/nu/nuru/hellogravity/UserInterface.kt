@@ -27,7 +27,7 @@ fun UserInterface(
     n: Int = 0,
     serviceState: ServiceState = ServiceState(),
 ) {
-    Surface(color = serviceState.color) {
+    Surface() {
         Column(
             modifier = Modifier
                 .fillMaxSize()

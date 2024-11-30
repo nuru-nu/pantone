@@ -2,7 +2,6 @@ package nu.nuru.hellogravity
 
 import android.hardware.Sensor
 import android.hardware.SensorEvent
-import androidx.compose.ui.graphics.Color
 import java.nio.ByteBuffer
 
 data class SensorData(
@@ -75,32 +74,5 @@ data class SensorData(
             putFloat(ry)
             putFloat(rz)
         }.array()
-    }
-}
-
-internal class ToColor {
-
-    private fun xyzToRgb(data: SensorData): Color {
-        val r = (data.gx + 10) / 20
-        val g = (data.gy + 10) / 20
-        val b = (data.gz + 10) / 20
-        return Color(r, g, b)
-    }
-
-    private fun zToRb(data: SensorData): Color {
-        val r = (10 + data.gz) / 20
-        val g = 0F
-        val b = (10 - data.gz) / 20
-        return Color(r, g, b)
-    }
-
-    private fun xyToHue(data: SensorData): Color {
-        val phi = Math.atan2(data.gy.toDouble(), data.gx.toDouble())
-        val hue = (phi / 2.0 / Math.PI + 0.5) * 360
-        return Color.hsv(hue.toFloat(), 1F, 1F);
-    }
-
-    fun getColor(data: SensorData): Color {
-        return xyToHue(data)
     }
 }

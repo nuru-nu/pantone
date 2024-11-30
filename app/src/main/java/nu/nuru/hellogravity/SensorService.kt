@@ -120,7 +120,6 @@ class SensorService: Service(), SensorEventListener, SharedPreferences.OnSharedP
     private var i = 0
     private val sensorData = SensorData()
     private val t0 = System.currentTimeMillis()
-    private val toColor = ToColor()
 
     override fun onSensorChanged(e: SensorEvent?) {
 
@@ -131,8 +130,6 @@ class SensorService: Service(), SensorEventListener, SharedPreferences.OnSharedP
         val t = (System.currentTimeMillis() - t0) / 1e3f
         valuesLogger!!.log(floatArrayOf(t) + sensorData.getValues())
 
-        val color = toColor.getColor(sensorData)
-
         if (prefs.getBoolean(getString(R.string.preferences_stream), false)) {
             client.sendSensordata(sensorData)
         }
@@ -141,7 +138,6 @@ class SensorService: Service(), SensorEventListener, SharedPreferences.OnSharedP
         if (i % 10 == 0) {
             model.liveData.postValue(ServiceState(
                 sensorData,
-                color,
                 stats,
                 client.getStatus(),
             ))

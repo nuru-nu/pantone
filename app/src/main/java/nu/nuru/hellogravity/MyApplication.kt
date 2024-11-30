@@ -2,7 +2,6 @@ package nu.nuru.hellogravity
 
 import android.app.Application
 import android.util.Log
-import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -32,7 +31,6 @@ class ApplicationModel : ViewModel() {
 
 data class ServiceState(
     val sensorData: SensorData = SensorData(),
-    val color: Color = Color.Black,
     val stats: NetworkStats = NetworkStats(),
     val connectionStatus: String = "?",
     )

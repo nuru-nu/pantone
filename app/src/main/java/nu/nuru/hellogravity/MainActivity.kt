@@ -21,7 +21,7 @@ const val TAG = "hellogravity"
 class MainActivity : ComponentActivity() { //, SensorEventListener {
 
     private var dispN: Int by mutableStateOf(1)  // triggers UI update
-    private var serviceState = ServiceState(SensorData(), Color.LightGray)
+    private var serviceState = ServiceState(SensorData())
 
     fun startService() {
         val serviceIntent = Intent(this, SensorService::class.java)
