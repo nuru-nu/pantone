@@ -3,6 +3,32 @@
 Simple Android app that streams sensor data.
 
 
+## Raspbian Server
+
+Targeting Bookworm. The server receives sensor data from the Android application
+and converts it to OSC messages that are sent to `olad` on port 7770.
+
+Installation:
+
+```bash
+./install_raspbian.sh
+cd py
+python3 -m venv env
+. env/bin/activate
+pip install -r requirements.txt
+```
+
+Running the server
+
+```bash
+cd py
+. env/bin/activate
+python server.py
+```
+
+Then navigate to http://localhost:8000 to see server status and stats.
+
+
 ## DMX: OLA Server
 
 OLA Server can be installed on a Raspberry Pi, and comes shipped with an OSC
