@@ -15,7 +15,7 @@ The setup is as follows:
 
 1. Connect to Rasperry Pi and set up wifis via `raspi-config`.
 2. For debugging (e.g. checking for OSC messages), OLA server can be started
-   manually via `sudo service olad stop` followed by
+   manually via `sudo systemctl stop olad` followed by
    `/usr/bin/olad --config-dir /etc/ola --log-level 4`
 3. OLA web UI: Make sure USB Serial plugin is working, since this is the plugin
    handling the "Enttec DMX USB Pro" (`/etc/ola/ola-usbserial.conf`).
