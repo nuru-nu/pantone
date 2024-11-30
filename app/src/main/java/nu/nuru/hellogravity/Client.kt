@@ -39,6 +39,7 @@ class Client(
     private var socket: Socket? = null
     private var reader: BufferedReader? = null
     private var writer: OutputStreamWriter? = null
+    private val stats = NetworkStats()
 
     private var data = JSONObject()
     private var address: String? = null
@@ -97,6 +98,7 @@ class Client(
         networkScope.launch {
             try {
                 udpSocket.send(packet)
+                stats.add(b.size)
                 udpSent++
             } catch (e: Exception) {
                 udpSendErrors++
@@ -220,5 +222,9 @@ class Client(
         for (listener in listeners) {
             listener.inControlChanged(inControl)
         }
+    }
+
+    fun getStats(): NetworkStats {
+        return stats
     }
 }

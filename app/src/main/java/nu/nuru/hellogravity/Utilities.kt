@@ -66,7 +66,7 @@ class NetworkStats(val interruptionSecs: Float = 1F) {
 
     override fun toString(): String {
         val secs = totalMillis / 1000
-        return "%.1f KB/s (%.1f MB in %d:%d)".format(
+        return "%.1f KB/s (%.1f MB in %02d:%02d)".format(
             totalBytes.toFloat() / 1L.coerceAtLeast(secs) / 1000,
             totalBytes.toFloat() / 1e6,
             secs / 60,

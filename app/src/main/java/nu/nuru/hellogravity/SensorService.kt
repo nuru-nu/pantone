@@ -34,8 +34,6 @@ class SensorService: Service(), SensorEventListener, SharedPreferences.OnSharedP
     private lateinit var prefs: SharedPreferences
     private val handler = Handler(Looper.getMainLooper())
 
-    private val stats = NetworkStats()
-
     private val runnable = object : Runnable {
         override fun run() {
             valuesLogger.write()
@@ -138,7 +136,7 @@ class SensorService: Service(), SensorEventListener, SharedPreferences.OnSharedP
         if (i % 10 == 0) {
             model.liveData.postValue(ServiceState(
                 sensorData,
-                stats,
+                client.getStats(),
                 client.getStatus(),
             ))
 //            debouncedLogger.log("SensorService: posted live data")
