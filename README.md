@@ -1,6 +1,7 @@
 # Hello Gravity
 
-Simple Android app to control light by motion.
+Simple Android app that streams sensor data.
+
 
 ## DMX: OLA Server
 
@@ -30,19 +31,8 @@ Run it:
    input port.
 3. Observe DMX Monitor while running app. Make sure parcan colors match.
 
-## Bluetooth
 
-WARNING: It turned out that Philips Hue style lamps controlled via Bluetooth
-scale really poorly. We also tried using a Philips Hue bridge, but that system
-also failed to deliver anything resembling real time updates. There is still
-some old code for controlling a system via bluetooth, but it has not been kept
-up to date with later changes.
+## Deprecated
 
-Connect lights
-
-1. Activate Bluetooth
-2. Connect to lights through Philips Hue app
-3. Hue lights now show up as "paired" devices in the Android Bluetooth device list
-4. Close Philips Hue app
-5. Open Hello Gravity
-6. The app should show n=2 if connected to two Philips Hue lights
+Note that previous versions supported directly sending data to `olad` or even
+lights via Bluetooth. Check out the tag `v1` in this repository.
