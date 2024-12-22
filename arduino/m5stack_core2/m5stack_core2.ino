@@ -21,6 +21,8 @@
 
 // https://chatgpt.com/c/674b1d21-9f74-8000-918c-23676efe547f
 
+// Note that you'll find frameworks files here
+// $HOME/Library/Arduino15/packages/m5stack/hardware/esp32/2.1.2/libraries/WiFi/src/WiFi.h
 #include <M5Core2.h>
 #include <WiFi.h>
 #include <WiFiUdp.h>
