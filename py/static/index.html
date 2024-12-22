@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<title>UDP Data Stream</title>
+<h1>UDP Data Stream</h1>
+<div id="data"></div>
+<script>
+
+function websocket() {
+  const protocol = {
+      "http:": "ws:",
+      "https:": "wss:",
+  }[location.protocol];
+  return new WebSocket(`${protocol}//${location.host}/ws`);
+}
+const ws = websocket();
+const dataDiv = document.getElementById('data');
+
+ws.onmessage = async function(event) {
+  const data = new Float32Array(await event.data.arrayBuffer());
+  dataDiv.textContent = Array.from(data).map(n => n.toFixed(3)).join(', ');
+};
+
+ws.onclose = function() {
+  dataDiv.textContent = 'Connection closed';
+};
+</script>
+
+<style>
+#data {
+  font-family: monospace;
+  white-space: pre;
+}
+</style>
