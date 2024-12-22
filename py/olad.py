@@ -6,7 +6,7 @@ import struct
 def to_rgb(sd):
   phi = math.atan2(sd.gy, sd.gx)
   hue = (phi / (2.0 * math.pi) + 0.5) * 360
-  
+
   # Convert HSV to RGB (colorsys uses 0-1 range for hue, not 0-360)
   rgb = colorsys.hsv_to_rgb(hue/360, 1.0, 1.0)
   return rgb
@@ -30,16 +30,25 @@ def _write_blob(x: bytes, n: int = 4) -> bytes:
   return result
 
 
-def to_osc(r, g, b):
+def to_osc(r, g, b, device='eurolite'):
 
   values = bytearray(16)
-  
+
   def to_value(x: float) -> int:
     return max(0, min(255, int(x * 255)))
 
-  values[0] = 255
-  values[3] = to_value(r)  
-  values[4] = to_value(g)  
-  values[5] = to_value(b)  
+  if device == 'froggy':
+    values[0] = 255
+    values[3] = to_value(r)
+    values[4] = to_value(g)
+    values[5] = to_value(b)
+  elif device == 'eurolite':
+    # Eurolite LED PARty TCL Spot
+    values[0] = to_value(r)
+    values[1] = to_value(g)
+    values[2] = to_value(b)
+    values[3] = 255
+  else:
+    assert ValueError(f'Unknown device={device}')
 
   return _write_string('/dmx/universe/0') + _write_string(",b") + _write_blob(bytes(values))
