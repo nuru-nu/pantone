@@ -24,6 +24,8 @@ Running the server
 cd py
 . env/bin/activate
 python server.py
+# WIP
+python server2.py
 ```
 
 Then navigate to http://localhost:8000 to see server status and stats.
@@ -46,16 +48,19 @@ The setup is as follows:
    `/usr/bin/olad --config-dir /etc/ola --log-level 4`
 3. OLA web UI: Make sure USB Serial plugin is working, since this is the plugin
    handling the "Enttec DMX USB Pro" (`/etc/ola/ola-usbserial.conf`).
-4. OLA web UI: Create universe 0, select OSC as input, and Enttec as output. 
+4. OLA web UI: Create universe 0, select **OSC as input, and Enttec as output**.
+   If for some reason the Enttec output device disappears, restart with
+   `sudo systemctl restart olad`
 5. Configure Parcans to be at `d0001` (or `d0009` etc).
 
 Run it:
 
 1. Get Raspberry Pi address via `ping -c1 dmxserver.local` and update this in
    app's UI.
-2. Check `http://dmxserver.local:9090` that we have enttec universe with OSC
+2. Check http://dmxserver.local:9090 that we have enttec universe with OSC
    input port.
 3. Observe DMX Monitor while running app. Make sure parcan colors match.
+4. Main app runs at http://dmxserver.local:8000
 
 
 ## Deprecated
