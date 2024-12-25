@@ -9,21 +9,23 @@
 
 # https://claude.ai/chat/793e8562-ecef-458d-baee-39f5f397cf61
 
-HTTP_PORT = 8000
-TCP_SERVER_PORT = 9000
-UDP_IMU_PORT = 9001
-
-
 import argparse
 import asyncio
 import datetime
 import logging
 import os
+import pathlib
+import socket
 import struct
 import weakref
 
 import aiohttp.web
-from pathlib import Path
+
+
+HTTP_PORT = 8000
+TCP_SERVER_PORT = 9000
+UDP_IMU_PORT = 9001
+UDP_BROADCAST_PORT = 9002
 
 
 def parse_args():
@@ -161,6 +163,21 @@ async def index_handler(request):
   raise aiohttp.web.HTTPFound('/static/index.html')
 
 
+async def periodic_broadcast(logger):
+  broadcast_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+  broadcast_sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+  broadcast_sock.setblocking(False)
+
+  try:
+    while True:
+      broadcast_sock.sendto(b"PANTONE1", ('255.255.255.255', UDP_BROADCAST_PORT))
+      logger.debug('Broadcast ping sent')
+      await asyncio.sleep(5.0)  # 5 second interval
+  except Exception as e:
+    logger.error(f"Broadcast error: {e}")
+    broadcast_sock.close()
+
+
 async def main():
   args = parse_args()
 
@@ -177,7 +194,7 @@ async def main():
   app['websocket_manager'] = websocket_manager
   app.router.add_get('/', index_handler)
   app.router.add_get('/ws', websocket_handler)
-  app.router.add_static('/static', Path('static'))
+  app.router.add_static('/static', pathlib.Path('static'))
 
   loop = asyncio.get_event_loop()
 
@@ -199,7 +216,10 @@ async def main():
   logger.info('All servers started')
 
   try:
-    await asyncio.Event().wait()  # run forever
+    await asyncio.gather(
+        asyncio.Event().wait(),  # run forever
+        periodic_broadcast(logger),
+    )
   finally:
     transport.close()
     tcp_server.close()

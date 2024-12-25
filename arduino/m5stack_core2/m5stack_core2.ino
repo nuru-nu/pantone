@@ -28,7 +28,12 @@
 #include <WiFiUdp.h>
 
 #include "wifi_credentials.h"
+char udpAddress[17];
 const int udpPort = 9001;
+#define UDP_BROADCAST_PORT 9002
+#define PROTOCOL_IDENTIFIER "PANTONE1"
+#define PACKET_BUFFER_LEN 32
+char packetBuffer[PACKET_BUFFER_LEN];
 
 #define G 9.81
 
@@ -115,6 +120,9 @@ void setup() {
   Serial.printf("Device IP: %s\n", WiFi.localIP().toString().c_str());
   M5.Lcd.setCursor(10, 40);
   M5.Lcd.printf("IP: %s          ", WiFi.localIP().toString().c_str());
+  strcpy(udpAddress, "");
+
+  udp.begin(UDP_BROADCAST_PORT);
 }
 
 float accX, accY, accZ;
@@ -158,6 +166,28 @@ void displayOn() {
 }
 
 void loop() {
+
+  if (!strcmp(udpAddress, "")) {
+    Serial.println("Waiting for UDP broadcast...");
+    delay(1000);
+    int packetSize = udp.parsePacket();
+    if (!packetSize) return;
+    int len = udp.read(packetBuffer, PACKET_BUFFER_LEN - 1);
+    if (len > 0) {
+      packetBuffer[len] = 0;
+    }
+    if (!strcmp(packetBuffer, PROTOCOL_IDENTIFIER)) {
+      Serial.printf("Invalid PROTOCOL_IDENTIFIER: %s\n", packetBuffer);
+      M5.Lcd.setCursor(10, 40);
+      M5.Lcd.printf("?!: %s", packetBuffer);
+      return;
+    }
+    strcpy(udpAddress, udp.remoteIP().toString().c_str());
+    Serial.printf("Server: %s\n", udpAddress);
+    M5.Lcd.setCursor(10, 60);
+    M5.Lcd.printf("Server: %s         ", udpAddress);
+  }
+
   M5.IMU.getAccelData(&accX, &accY, &accZ);
   M5.IMU.getGyroData(&gyroX, &gyroY, &gyroZ);
 
