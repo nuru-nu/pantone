@@ -29,6 +29,7 @@ export class DynamicScaler {
     this.count = 0;
     this.sum = 0;
     this.sumSquares = 0;
+    this.value = NaN;
 
     this.#updateStats();
   }
@@ -38,6 +39,7 @@ export class DynamicScaler {
    * @param {number} value New value to add
    */
   addValue(value) {
+    this.value = value;
     this.count++;
     this.sum += value;
     this.sumSquares += value * value;
@@ -86,8 +88,8 @@ export class DynamicScaler {
 
     this.element.innerHTML = `
       <div style="color:${this.color}">
-        ${this.name} ${avg.toFixed(2)}±${std.toFixed(2)}
-        [${this.scaleType} ${this.min.toFixed(2)}..${this.max.toFixed(2)}]
+        ${this.name} ${this.value.toFixed(2)} ⌀${avg.toFixed(2)}±${std.toFixed(2)}
+        [${this.scaleType.substring(0, 3)} ${this.min.toFixed(2)}..${this.max.toFixed(2)}]
       </div>
     `;
   }
