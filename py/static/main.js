@@ -1,3 +1,5 @@
+// @ts-check
+
 // NETWORKING
 
 function websocket() {
@@ -8,7 +10,7 @@ function websocket() {
   return new WebSocket(`${protocol}//${location.host}/ws`);
 }
 const ws = websocket();
-const dataDiv = document.getElementById('data');
+const dataDiv = /** @type {HTMLDivElement} */ (document.getElementById('data'))
 
 let lastData = null, lastT = null, lastDt = null;
 ws.onmessage = async function(event) {
@@ -26,13 +28,28 @@ ws.onclose = function() {
 
 // DRAWING
 
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d', { alpha: false });
+import { DynamicScaler } from './scale.js';
+
+const canvas = /** @type {HTMLCanvasElement} */ (document.getElementById('canvas'));
+const ctx = /** @type {CanvasRenderingContext2D} */ (canvas.getContext('2d', { alpha: false }));
 
 const offscreenCanvas = document.createElement('canvas');
-const offscreenCtx = offscreenCanvas.getContext('2d', { alpha: false });
+const offscreenCtx = /** @type {CanvasRenderingContext2D} */ (offscreenCanvas.getContext('2d', { alpha: false }));
+
+const scalersDiv = /** @type {HTMLDivElement} */ (document.getElementById('scalers'))
+const createScaler = args => {
+  const element = document.createElement('div');
+  scalersDiv.append(element);
+  return new DynamicScaler({...args, element});
+};
+const scalers = {
+    gx: createScaler({name: 'gx', color: 'red', min: -10, max: 10}),
+    gy: createScaler({name: 'gy', color: 'green', min: -10, max: 10}),
+    hz: createScaler({name: 'hz', color: 'white', min: 0, max: 60}),
+};
 
 function resizeCanvas() {
+  // @ts-ignore
   const width = canvas.parentElement.clientWidth;
   const height = canvas.height;
   canvas.width = width;
@@ -66,6 +83,7 @@ function draw(timestamp) {
 
   const x = canvas.width - 1;
   function set(y, color) {
+    y *= canvas.height;
     ctx.strokeStyle = color;
     ctx.beginPath();
     ctx.moveTo(x, y - 1);
@@ -75,14 +93,15 @@ function draw(timestamp) {
 
   if (lastData) {
     const [gx, gy, ..._] = lastData;
-    const norm = y => Math.floor((y / 20 + 0.5) * canvas.height);
-    set(norm(gx), 'red');
-    set(norm(gy), 'green');
+    scalers.gx.addValue(gx);
+    scalers.gy.addValue(gy);
+    set(scalers.gx.scale(gx), scalers.gx.color);
+    set(scalers.gy.scale(gy), scalers.gy.color);
   }
   if (lastDt) {
-    const norm = y => Math.floor((y / 100) * canvas.height);
-    const clip = y => Math.max(5, Math.min(canvas.height, y));
-    set(clip(norm(lastDt)), 'white');
+    const hz = 1 / (lastDt / 1e3);
+    scalers.hz.addValue(hz);
+    set(scalers.hz.scale(hz), scalers.hz.color);
   }
 
   requestAnimationFrame(draw);
