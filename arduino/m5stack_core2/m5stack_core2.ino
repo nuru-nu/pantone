@@ -92,16 +92,26 @@ void setup() {
 
   displayOn();
 
-  Serial.println("Connect to Wi-Fi:");
-  M5.Lcd.setCursor(10, 40);
-  M5.Lcd.printf("Connecting: ", ssid);
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-    M5.Lcd.print(".");
+  int wifi_i = 0;
+  bool connected = false;
+  M5.Lcd.setCursor(10, 10);
+  M5.Lcd.print("Wifi: ");
+  while (!connected) {
+    Serial.printf("Connecting to %s\n", ssids[wifi_i]);
+    M5.Lcd.print(ssids[wifi_i]);
+    WiFi.begin(ssids[wifi_i], passwords[wifi_i]);
+    for (int i = 0; i < 10 && !connected; i++) {
+      delay(500);
+      connected |= WiFi.status() == WL_CONNECTED;
+      Serial.print(".");
+      M5.Lcd.print(".");
+    }
+    if (!connected) {
+      wifi_i = (wifi_i + 1) % WIFIS_N;
+    }
   }
-  Serial.println("\nConnected to Wi-Fi");
+  M5.Lcd.clear();
+  Serial.printf("\nConnected to %s", ssids[wifi_i]);
   Serial.printf("Device IP: %s\n", WiFi.localIP().toString().c_str());
   M5.Lcd.setCursor(10, 40);
   M5.Lcd.printf("IP: %s          ", WiFi.localIP().toString().c_str());
