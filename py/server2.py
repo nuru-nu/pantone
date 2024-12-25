@@ -158,7 +158,7 @@ async def websocket_handler(request):
 
 
 async def index_handler(request):
-  return aiohttp.web.FileResponse(Path('static/index.html'))
+  raise aiohttp.web.HTTPFound('/static/index.html')
 
 
 async def main():
