@@ -176,9 +176,10 @@ void loop() {
     if (len > 0) {
       packetBuffer[len] = 0;
     }
-    if (!strcmp(packetBuffer, PROTOCOL_IDENTIFIER)) {
+    Serial.printf("Broadcast: %s\n", packetBuffer);
+    if (strcmp(packetBuffer, PROTOCOL_IDENTIFIER)) {
       Serial.printf("Invalid PROTOCOL_IDENTIFIER: %s\n", packetBuffer);
-      M5.Lcd.setCursor(10, 40);
+      M5.Lcd.setCursor(10, 60);
       M5.Lcd.printf("?!: %s", packetBuffer);
       return;
     }
