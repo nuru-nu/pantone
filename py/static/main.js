@@ -12,13 +12,13 @@ function websocket() {
 const ws = websocket();
 const dataDiv = /** @type {HTMLDivElement} */ (document.getElementById('data'))
 
-let lastData = null, lastT = null, lastDt = null;
+let lastData = new Float32Array(6), lastT = null, lastDt = 50;
 ws.onmessage = async function(event) {
   const data = new Float32Array(await event.data.arrayBuffer());
   dataDiv.textContent = Array.from(data).map(n => n.toFixed(3)).join(', ');
   lastData = data;
   const t = performance.now();
-  if (lastT) lastDt = t - lastT;
+  if (lastT) lastDt = Math.max(10, t - lastT);
   lastT = t;
 };
 
@@ -43,9 +43,10 @@ const createScaler = args => {
   return new DynamicScaler({...args, element});
 };
 const scalers = {
-    gx: createScaler({name: 'gx', color: 'red', min: -10, max: 10}),
-    gy: createScaler({name: 'gy', color: 'green', min: -10, max: 10}),
-    hz: createScaler({name: 'hz', color: 'white', min: 0, max: 60}),
+    gx: createScaler({name: 'gx', color: '#f00', min: -10, max: 10}),
+    gy: createScaler({name: 'gy', color: '#0f0', min: -10, max: 10}),
+    gz: createScaler({name: 'gz', color: '#00f', min: -10, max: 10}),
+    hz: createScaler({name: 'hz', color: '#fff', min: 0, max: 60}),
 };
 
 function resizeCanvas() {
@@ -73,9 +74,10 @@ function draw(timestamp) {
 
   offscreenCtx.drawImage(canvas, 0, 0);
 
-  ctx.fillStyle = 'black';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const [gx, gy, gz, r, g, b] = lastData;
 
+  ctx.fillStyle = `rgb(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)})`;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(offscreenCanvas,
       1, 0, canvas.width - 1, canvas.height,  // src
       0, 0, canvas.width - 1, canvas.height,  // dst
@@ -84,25 +86,28 @@ function draw(timestamp) {
   const x = canvas.width - 1;
   function set(y, color) {
     y *= canvas.height;
+    ctx.strokeStyle = 'black';
+    ctx.beginPath();
+    ctx.moveTo(x, y - 5);
+    ctx.lineTo(x, y + 5);
+    ctx.stroke();
     ctx.strokeStyle = color;
     ctx.beginPath();
-    ctx.moveTo(x, y - 1);
-    ctx.lineTo(x, y + 1);
+    ctx.moveTo(x, y - 2);
+    ctx.lineTo(x, y + 2);
     ctx.stroke();
   }
 
-  if (lastData) {
-    const [gx, gy, ..._] = lastData;
-    scalers.gx.addValue(gx);
-    scalers.gy.addValue(gy);
-    set(scalers.gx.scale(gx), scalers.gx.color);
-    set(scalers.gy.scale(gy), scalers.gy.color);
-  }
-  if (lastDt) {
-    const hz = 1 / (lastDt / 1e3);
-    scalers.hz.addValue(hz);
-    set(scalers.hz.scale(hz), scalers.hz.color);
-  }
+  scalers.gx.addValue(gx);
+  scalers.gy.addValue(gy);
+  scalers.gz.addValue(gz);
+  set(scalers.gx.scale(gx), scalers.gx.color);
+  set(scalers.gy.scale(gy), scalers.gy.color);
+  set(scalers.gz.scale(gz), scalers.gz.color);
+
+  const hz = 1 / (lastDt / 1e3);
+  scalers.hz.addValue(hz);
+  set(scalers.hz.scale(hz), scalers.hz.color);
 
   requestAnimationFrame(draw);
 }

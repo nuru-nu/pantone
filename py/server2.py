@@ -11,6 +11,7 @@
 
 import argparse
 import asyncio
+import collections
 import datetime
 import logging
 import os
@@ -21,11 +22,15 @@ import weakref
 
 import aiohttp.web
 
+import olad
+
 
 HTTP_PORT = 8000
 TCP_SERVER_PORT = 9000
 UDP_IMU_PORT = 9001
 UDP_BROADCAST_PORT = 9002
+
+SensorData = collections.namedtuple('SensorData', 'gx, gy, gz, ax, ay, az, rx, ry, rz'.split(', '))
 
 
 def parse_args():
@@ -55,6 +60,8 @@ class UDPProtocol:
     self.transport = None
     self.logger = logging.getLogger('UDPProtocol')
     self._closed = False
+    self.osc_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    self.osc_address = ('localhost', 7770)
 
   def connection_made(self, transport):
     self.transport = transport
@@ -73,6 +80,10 @@ class UDPProtocol:
       except:
         pass
       self.transport = None
+      try:
+        self.osc_socket.close()
+      except:
+        pass
 
   def datagram_received(self, data, addr):
     if self._closed:
@@ -83,7 +94,16 @@ class UDPProtocol:
 
     try:
       values = struct.unpack('>9f', data)  # Android: big-endian
-      asyncio.create_task(self.websocket_manager.broadcast(struct.pack('<9f', *values)))
+      sd = SensorData(*values)
+      rgb = olad.to_rgb(sd)
+      msg = olad.to_osc(*rgb)
+      try:
+        self.osc_socket.sendto(msg, self.osc_address)
+      except Exception as e:
+        self.logger.error(f'Error forwarding OSC packet: {e}')
+
+      ws_msg = struct.pack('<6f', sd.gx, sd.gy, sd.gz, *rgb)
+      asyncio.create_task(self.websocket_manager.broadcast(ws_msg))
       self.data_file.write(data)
       self.data_file.flush()
 
