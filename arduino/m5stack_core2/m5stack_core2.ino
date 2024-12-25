@@ -15,9 +15,13 @@
 // ema measurements (DCDC3 off / on) [12h]:
 // 10,10,100 - 100 mA / 115 mA [1.4 Ah]
 // 100,1,10  - 90 mA / 90 mA
-#define DELAY 100
-#define EVERY1 1
-#define EVERY2 10
+
+// ms between measurements
+#define DELAY 10
+// cycles to update fast display (IMU)
+#define EVERY1 10
+// cycles to update slow display (I, bat)
+#define EVERY2 100
 
 // https://chatgpt.com/c/674b1d21-9f74-8000-918c-23676efe547f
 
@@ -105,7 +109,7 @@ void setup() {
     Serial.printf("Connecting to %s\n", ssids[wifi_i]);
     M5.Lcd.print(ssids[wifi_i]);
     WiFi.begin(ssids[wifi_i], passwords[wifi_i]);
-    for (int i = 0; i < 10 && !connected; i++) {
+    for (int i = 0; i < 16 && !connected; i++) {
       delay(500);
       connected |= WiFi.status() == WL_CONNECTED;
       Serial.print(".");
@@ -119,7 +123,7 @@ void setup() {
   Serial.printf("\nConnected to %s", ssids[wifi_i]);
   Serial.printf("Device IP: %s\n", WiFi.localIP().toString().c_str());
   M5.Lcd.setCursor(10, 40);
-  M5.Lcd.printf("IP: %s          ", WiFi.localIP().toString().c_str());
+  M5.Lcd.printf("Device: %s          ", WiFi.localIP().toString().c_str());
   strcpy(udpAddress, "");
 
   udp.begin(UDP_BROADCAST_PORT);
