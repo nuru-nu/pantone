@@ -1,8 +1,8 @@
 """Server converting IMU packets to OSC messages, with web simple app.
 
 1. Listens on UDP port UDP_IMU_PORT for raw IMU messages.
-2. Congerts data to light OSC UDP messages and sends them to localhost:7770
-3. Listes on TCP port TCP_SERVER_PORT for client connections. Simple protocol
+2. Converts data to light OSC UDP messages and sends them to localhost:7770
+3. Listens on TCP port TCP_SERVER_PORT for client connections. Simple protocol
    with bidirectional JSONL state updates.
 4. Web server at port HTTP_PORT with streaming UI.
 """
@@ -13,6 +13,7 @@ import argparse
 import asyncio
 import collections
 import datetime
+import json
 import logging
 import os
 import pathlib
@@ -20,6 +21,7 @@ import socket
 import struct
 import weakref
 
+import aiofiles
 import aiohttp.web
 
 import olad
@@ -32,6 +34,15 @@ UDP_BROADCAST_PORT = 9002
 
 SensorData = collections.namedtuple('SensorData', 'gx, gy, gz, ax, ay, az, rx, ry, rz'.split(', '))
 
+log_file = None
+
+STATE_FILE = 'state.json'
+state = dict(
+    started=datetime.datetime.now().strftime('%H:%M:%S'),
+    algorithm='xy_hue',
+)
+serialized = lambda s: {k: v for k, v in s.items() if k not in {'started'}}  # noqa: E731
+
 
 def parse_args():
   parser = argparse.ArgumentParser(description=__doc__)
@@ -40,6 +51,7 @@ def parse_args():
 
 
 def setup_logging(timestamp, debug=False):
+  global log_file
   log_file = f'logs/{timestamp}.log'
 
   logging.basicConfig(
@@ -104,8 +116,8 @@ class UDPProtocol:
 
       ws_msg = struct.pack('<6f', sd.gx, sd.gy, sd.gz, *rgb)
       asyncio.create_task(self.websocket_manager.broadcast(ws_msg))
-      self.data_file.write(data)
-      self.data_file.flush()
+      asyncio.create_task(self.data_file.write(data))
+      # await self.data_file.flush()
 
       # self.logger.debug(f'Received packet from {addr}: {values}')
     except Exception as e:
@@ -179,20 +191,45 @@ async def websocket_handler(request):
   return ws
 
 
+async def state_get(request):
+  return aiohttp.web.json_response(state)
+
+
+async def state_post(request):
+  try:
+    payload = await request.json()
+    if not isinstance(payload, dict):
+        raise aiohttp.web.HTTPBadRequest(text='Payload must be a dictionary')
+    state.update(payload)
+    return aiohttp.web.json_response(state)
+  except json.JSONDecodeError:
+      raise aiohttp.web.HTTPBadRequest(text='Invalid JSON payload')
+
+
+async def logs_get(request):
+  return aiohttp.web.Response(
+      text=await (await aiofiles.open(log_file)).read(),
+      content_type='text/plain',
+      charset='utf-8'
+  )
+
+
 async def index_handler(request):
   raise aiohttp.web.HTTPFound('/static/index.html')
 
 
-async def periodic_broadcast(logger):
+async def periodic_handler(logger):
   broadcast_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
   broadcast_sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
   broadcast_sock.setblocking(False)
 
   try:
     while True:
-      broadcast_sock.sendto(b"PANTONE1", ('255.255.255.255', UDP_BROADCAST_PORT))
+      broadcast_sock.sendto(b'PANTONE1', ('255.255.255.255', UDP_BROADCAST_PORT))
       logger.debug('Broadcast ping sent')
-      await asyncio.sleep(5.0)  # 5 second interval
+      async with aiofiles.open(STATE_FILE, 'w') as f:
+          await f.write(json.dumps(state, indent=2))
+      await asyncio.sleep(5.0)
   except Exception as e:
     logger.error(f"Broadcast error: {e}")
     broadcast_sock.close()
@@ -206,13 +243,16 @@ async def main():
   logger = logging.getLogger(__name__)
   logger.info('Starting server')
 
-  data_file = open(f'logs/{timestamp}.bin', 'wb')
+  data_file = await aiofiles.open(f'logs/{timestamp}.bin', 'wb')
 
   websocket_manager = WebSocketManager()
 
   app = aiohttp.web.Application()
   app['websocket_manager'] = websocket_manager
   app.router.add_get('/', index_handler)
+  app.router.add_get('/logs', logs_get)
+  app.router.add_get('/state', state_get)
+  app.router.add_post('/state', state_post)
   app.router.add_get('/ws', websocket_handler)
   app.router.add_static('/static', pathlib.Path('static'))
 
@@ -238,7 +278,7 @@ async def main():
   try:
     await asyncio.gather(
         asyncio.Event().wait(),  # run forever
-        periodic_broadcast(logger),
+        periodic_handler(logger),
     )
   finally:
     transport.close()
@@ -252,4 +292,6 @@ async def main():
 if __name__ == '__main__':
   os.chdir(os.path.dirname(os.path.abspath(__file__)))
   os.makedirs('logs', exist_ok=True)
+  if os.path.exists(STATE_FILE):
+    state.update(json.load(open(STATE_FILE)))
   asyncio.run(main())

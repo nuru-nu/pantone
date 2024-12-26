@@ -1,3 +1,4 @@
 /env
 /logs
+/state.json
 __pycache__
