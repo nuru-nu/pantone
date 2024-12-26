@@ -7,7 +7,7 @@ function websocket() {
       "http:": "ws:",
       "https:": "wss:",
   }[location.protocol];
-  return new WebSocket(`${protocol}//${location.host}/ws`);
+  return new WebSocket(`${protocol}//${location.host}/data`);
 }
 const ws = websocket();
 const dataDiv = /** @type {HTMLDivElement} */ (document.getElementById('data'))
@@ -25,6 +25,12 @@ ws.onmessage = async function(event) {
 ws.onclose = function() {
   dataDiv.textContent = 'Connection closed';
 };
+
+// UI
+
+import StateManager from './state.js';
+
+const stateManager = new StateManager(/** @type {HTMLElement} */ (document.getElementById('state')));
 
 // DRAWING
 

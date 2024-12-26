@@ -31,7 +31,7 @@ export class DynamicScaler {
     this.sumSquares = 0;
     this.value = NaN;
 
-    this.#updateStats();
+    this.#updateStatsAndRender();
   }
 
   /**
@@ -47,7 +47,7 @@ export class DynamicScaler {
     this.min = Math.min(this.min, value);
     this.max = Math.max(this.max, value);
 
-    this.#updateStats();
+    this.#updateStatsAndRender();
   }
 
   /**
@@ -62,26 +62,17 @@ export class DynamicScaler {
     return this.#linearScale(value);
   }
 
-  /**
-   * Linear scaling function
-   */
   #linearScale(value) {
     return (value - this.min) / (this.max - this.min);
   }
 
-  /**
-   * Logarithmic scaling function
-   */
   #logScale(value) {
     const logMin = Math.log(Math.max(this.min, Number.EPSILON));
     const logMax = Math.log(this.max);
     return (Math.log(Math.max(value, Number.EPSILON)) - logMin) / (logMax - logMin);
   }
 
-  /**
-   * Calculate and update statistics display
-   */
-  #updateStats() {
+  #updateStatsAndRender() {
     const avg = this.count ? this.sum / this.count : 0;
     const variance = this.count ? (this.sumSquares / this.count) - (avg * avg) : 0;
     const std = Math.sqrt(Math.max(0, variance));

@@ -66,8 +66,8 @@ def setup_logging(timestamp, debug=False):
 
 
 class UDPProtocol:
-  def __init__(self, websocket_manager, data_file):
-    self.websocket_manager = websocket_manager
+  def __init__(self, data_manager, data_file):
+    self.data_manager = data_manager
     self.data_file = data_file
     self.transport = None
     self.logger = logging.getLogger('UDPProtocol')
@@ -115,7 +115,7 @@ class UDPProtocol:
         self.logger.error(f'Error forwarding OSC packet: {e}')
 
       ws_msg = struct.pack('<6f', sd.gx, sd.gy, sd.gz, *rgb)
-      asyncio.create_task(self.websocket_manager.broadcast(ws_msg))
+      asyncio.create_task(self.data_manager.broadcast(ws_msg))
       asyncio.create_task(self.data_file.write(data))
       # await self.data_file.flush()
 
@@ -146,9 +146,9 @@ async def handle_tcp(reader, writer):
 
 
 class WebSocketManager:
-  def __init__(self):
+  def __init__(self, name):
     self.clients = weakref.WeakSet()
-    self.logger = logging.getLogger('WebSocketManager')
+    self.logger = logging.getLogger(f'WebSocketManager[{name}]')
 
   def add_client(self, ws):
     self.clients.add(ws)
@@ -172,35 +172,53 @@ class WebSocketManager:
       await asyncio.gather(*tasks, return_exceptions=True)
 
 
-async def websocket_handler(request):
-  logger = logging.getLogger('WebSocket')
+async def data_ws(request):
+  logger = logging.getLogger('DataWs')
   ws = aiohttp.web.WebSocketResponse()
   await ws.prepare(request)
 
-  websocket_manager = request.app['websocket_manager']
-  websocket_manager.add_client(ws)
+  data_manager = request.app['data_manager']
+  data_manager.add_client(ws)
 
   try:
     async for msg in ws:
       del msg
   except Exception as e:
-    logger.error(f'WebSocket error: {e}')
+    logger.error(f'DataWs error: {e}')
   finally:
-    websocket_manager.remove_client(ws)
-    logger.info('WebSocket connection closed')
+    data_manager.remove_client(ws)
+    logger.info('DataWs connection closed')
   return ws
 
 
-async def state_get(request):
-  return aiohttp.web.json_response(state)
+async def state_ws(request):
+  logger = logging.getLogger('StateWs')
+  ws = aiohttp.web.WebSocketResponse()
+  await ws.prepare(request)
+  await ws.send_bytes(json.dumps(state).encode())
+
+  state_manager = request.app['state_manager']
+  state_manager.add_client(ws)
+
+  try:
+    async for msg in ws:
+      del msg
+  except Exception as e:
+    logger.error(f'StateWs error: {e}')
+  finally:
+    state_manager.remove_client(ws)
+    logger.info('StateWs connection closed')
+  return ws
 
 
 async def state_post(request):
+  state_manager = request.app['state_manager']
   try:
     payload = await request.json()
     if not isinstance(payload, dict):
         raise aiohttp.web.HTTPBadRequest(text='Payload must be a dictionary')
     state.update(payload)
+    await state_manager.broadcast(json.dumps(payload).encode())
     return aiohttp.web.json_response(state)
   except json.JSONDecodeError:
       raise aiohttp.web.HTTPBadRequest(text='Invalid JSON payload')
@@ -245,21 +263,23 @@ async def main():
 
   data_file = await aiofiles.open(f'logs/{timestamp}.bin', 'wb')
 
-  websocket_manager = WebSocketManager()
+  data_manager = WebSocketManager('data')
+  state_manager = WebSocketManager('state')
 
   app = aiohttp.web.Application()
-  app['websocket_manager'] = websocket_manager
+  app['data_manager'] = data_manager
+  app['state_manager'] = state_manager
   app.router.add_get('/', index_handler)
   app.router.add_get('/logs', logs_get)
-  app.router.add_get('/state', state_get)
+  app.router.add_get('/state', state_ws)
   app.router.add_post('/state', state_post)
-  app.router.add_get('/ws', websocket_handler)
+  app.router.add_get('/data', data_ws)
   app.router.add_static('/static', pathlib.Path('static'))
 
   loop = asyncio.get_event_loop()
 
   transport, protocol = await loop.create_datagram_endpoint(
-      lambda: UDPProtocol(websocket_manager, data_file),
+      lambda: UDPProtocol(data_manager, data_file),
       local_addr=('0.0.0.0', UDP_IMU_PORT)
   )
   del protocol
