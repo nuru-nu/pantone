@@ -2,29 +2,26 @@
 
 <style>
 body {
+  font-family: monospace;
   background: #222;
   color: #ddd;
 }
 #data {
-  font-family: monospace;
   white-space: pre;
 }
 canvas {
   display: block;
-  height: 40vh;
   width: 100%;
 }
 #scalers {
   background: black;
   display: flex;
   gap: 1em;
-  font-family: monospace;
   white-space: pre;
 }
 .state-manager {
   display: flex;
   gap: 2em;
-  font-family: monospace;
   align-items: center;
 }
 </style>
@@ -32,7 +29,8 @@ canvas {
 <title>UDP Data Stream</title>
 <div id="data"></div>
 <div id="state"></div>
-<canvas id="canvas"></canvas>
+<canvas id="canvas" height="200"></canvas>
 <div id="scalers"></div>
+<label>bg:</label><input type="checkbox" id="bg">
 
 <script type="module" src="./main.js"></script>

@@ -29,8 +29,14 @@ ws.onclose = function() {
 // UI
 
 import StateManager from './state.js';
-
 const stateManager = new StateManager(/** @type {HTMLElement} */ (document.getElementById('state')));
+let bg = false;
+// @ts-ignore
+document.getElementById('bg').addEventListener('change', (event) => {
+    // @ts-ignore
+    bg = event.target.checked;
+});
+
 
 // DRAWING
 
@@ -83,6 +89,8 @@ function draw(timestamp) {
   const [gx, gy, gz, r, g, b] = lastData;
 
   ctx.fillStyle = `rgb(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)})`;
+  // @ts-ignore
+  document.body.style.background = bg ? ctx.fillStyle : null;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(offscreenCanvas,
       1, 0, canvas.width - 1, canvas.height,  // src
