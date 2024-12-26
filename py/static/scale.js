@@ -86,11 +86,12 @@ export class DynamicScaler {
     const variance = this.count ? (this.sumSquares / this.count) - (avg * avg) : 0;
     const std = Math.sqrt(Math.max(0, variance));
 
-    this.element.innerHTML = `
-      <div style="color:${this.color}">
-        ${this.name} ${this.value.toFixed(2)} ⌀${avg.toFixed(2)}±${std.toFixed(2)}
-        [${this.scaleType.substring(0, 3)} ${this.min.toFixed(2)}..${this.max.toFixed(2)}]
-      </div>
-    `;
+    const pad = x => {
+      return x.toFixed(2).padStart(6);
+    };
+
+    this.element.innerHTML = `<div style="color:${this.color}">` +
+`${this.name} ${pad(this.value)} ⌀${pad(avg)}±${pad(std)}
+[${this.scaleType.substring(0, 3)} ${pad(this.min)}..${pad(this.max)}]</div>`;
   }
 }
