@@ -85,12 +85,12 @@ class StateManager {
     this.targetElement.innerHTML = `
       <div class="state-manager">
         <div class="state-item">
-          <label>Timestamp:</label>
+          <label>timestamp:</label>
           <span>${this.state.started}</span>
         </div>
 
         <div class="state-item">
-          <label>Algorithm:</label>
+          <label>algorithm:</label>
           <select id="algorithm">
             ${['xy_hue', 'xz_hue', 'yz_hue']
               .map(alg => `
@@ -103,7 +103,7 @@ class StateManager {
         </div>
 
         <div class="state-item">
-          <label>Param1:</label>
+          <label>param1:</label>
           <input
             type="range"
             id="param1"

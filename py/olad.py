@@ -3,8 +3,15 @@ import math
 import struct
 
 
-def to_rgb(sd):
-  phi = math.atan2(sd.gy, sd.gx)
+def to_rgb(sd, algorithm='xy_hue'):
+  if algorithm == 'xy_hue':
+    phi = math.atan2(sd.gy, sd.gx)
+  elif algorithm == 'yz_hue':
+    phi = math.atan2(sd.gz, sd.gy)
+  elif algorithm == 'xz_hue':
+    phi = math.atan2(sd.gz, sd.gx)
+  else:
+    raise ValueError(f'Unknown algorithm: {algorithm}')
   hue = (phi / (2.0 * math.pi) + 0.5) * 360
 
   # Convert HSV to RGB (colorsys uses 0-1 range for hue, not 0-360)

@@ -40,6 +40,7 @@ STATE_FILE = 'state.json'
 state = dict(
     started=datetime.datetime.now().strftime('%H:%M:%S'),
     algorithm='xy_hue',
+    param1=0,
 )
 serialized = lambda s: {k: v for k, v in s.items() if k not in {'started'}}  # noqa: E731
 
@@ -63,6 +64,17 @@ def setup_logging(timestamp, debug=False):
       ]
   )
   logging.getLogger(__name__).info(f"Logging level set to: {'DEBUG' if debug else 'INFO'}")
+
+
+smoothened = None
+def smooth(values):
+  global smoothened
+  if not smoothened:
+    smoothened = values
+  a = state['param1']
+  f = lambda s, x: x * a + (1 - a) * s  # noqa: E731
+  smoothened = tuple(map(f, smoothened, values))
+  return smoothened
 
 
 class UDPProtocol:
@@ -107,7 +119,8 @@ class UDPProtocol:
     try:
       values = struct.unpack('>9f', data)  # Android: big-endian
       sd = SensorData(*values)
-      rgb = olad.to_rgb(sd)
+      rgb = olad.to_rgb(sd, state['algorithm'])
+      rgb = smooth(rgb)
       msg = olad.to_osc(*rgb)
       try:
         self.osc_socket.sendto(msg, self.osc_address)
