@@ -24,6 +24,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 
+val SAMPLING_US = 50 * 1000;
+
 class SensorService: Service(), SensorEventListener, SharedPreferences.OnSharedPreferenceChangeListener {
 
     private lateinit var sensorManager: SensorManager
@@ -45,9 +47,9 @@ class SensorService: Service(), SensorEventListener, SharedPreferences.OnSharedP
         Log.d(TAG, "SensorService: onCreate")
 
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
-        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY), 10000)
-        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), 10000)
-        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE), 10000)
+        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), SAMPLING_US)
+        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE), SAMPLING_US)
+        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY), SAMPLING_US)  // main trigger
 
         val notification = createNotification()
         startForeground(FOREGROUND_NOTIFICATION_ID, notification)
