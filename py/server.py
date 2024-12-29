@@ -28,7 +28,6 @@ import olad
 
 
 HTTP_PORT = 8000
-TCP_SERVER_PORT = 9000
 UDP_IMU_PORT = 9001
 UDP_BROADCAST_PORT = 9002
 
@@ -168,27 +167,6 @@ class UDPProtocol:
       # self.logger.debug(f'Received packet from {addr}: {values}')
     except Exception as e:
       self.logger.error(f'Error processing packet from {addr}: {e}')
-
-
-async def handle_tcp(reader, writer):
-  logger = logging.getLogger('TCPServer')
-  addr = writer.get_extra_info('peername')
-  logger.info(f'New TCP connection from {addr}')
-
-  try:
-    while True:
-      data = await reader.read(1024)
-      if not data:
-        break
-      logger.debug(f'Received TCP data from {addr}: {data}')
-      writer.write(data)
-      await writer.drain()
-  except Exception as e:
-    logger.error(f'Error handling TCP connection from {addr}: {e}')
-  finally:
-    writer.close()
-    await writer.wait_closed()
-    logger.info(f'TCP connection closed from {addr}')
 
 
 class WebSocketManager:
@@ -331,10 +309,6 @@ async def main():
   )
   del protocol
 
-  tcp_server = await asyncio.start_server(
-      handle_tcp, '0.0.0.0', TCP_SERVER_PORT
-  )
-
   runner = aiohttp.web.AppRunner(app)
   await runner.setup()
   site = aiohttp.web.TCPSite(runner, '0.0.0.0', HTTP_PORT)
@@ -349,8 +323,6 @@ async def main():
     )
   finally:
     transport.close()
-    tcp_server.close()
-    await tcp_server.wait_closed()
     await runner.cleanup()
     data_file.close()
     logger.info('Server shutdown complete')
