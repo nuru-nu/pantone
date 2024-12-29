@@ -6,25 +6,20 @@ import StateManager from './state.js';
 
 const network = new NetworkManager();
 const stateManager = new StateManager(/** @type {HTMLElement} */ (document.getElementById('state')));
-const dataDiv = /** @type {HTMLDivElement} */ (document.getElementById('data'));
+const plotsDiv = /** @type {HTMLDivElement} */ (document.getElementById('plots'));
 
-const plot = new Plot({
-  canvas: /** @type {HTMLCanvasElement} */ (document.getElementById('canvas')),
-  scalersDiv: /** @type {HTMLDivElement} */ (document.getElementById('scalers')),
-  enableBackground: false
-});
+/** @type {Map<String, Plot>} */
+const plots = new Map();
 
 network.onData(data => {
-  dataDiv.textContent = Array.from(data).map((n, i) => i > 1 ? n.toFixed(3): n).join(', ');
-  plot.addData(data);
+  const name = stateManager.state.clients[data[1]];
+  if (!name) return;
+  if (!plots.has(name)) {
+    plots.set(name, new Plot(name, plotsDiv));
+  }
+  /** @type {Plot} */ (plots.get(name)).addData(data);
 });
 
 network.onClose(() => {
-  dataDiv.textContent = 'Connection closed';
-});
-
-// @ts-ignore
-document.getElementById('bg').addEventListener('change', (event) => {
-  // @ts-ignore
-  plot.setBackgroundEnabled(event.target.checked);
+  console.log('Connection closed');
 });

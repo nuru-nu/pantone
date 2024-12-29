@@ -11,6 +11,10 @@ import './types.js';
 
 /** @class */
 export class Plot {
+  /** @type {HTMLDivElement} */
+  #element;
+  /** @type {HTMLDivElement} */
+  #pre;
   /** @type {HTMLCanvasElement} */
   #canvas;
   /** @type {CanvasRenderingContext2D} */
@@ -26,22 +30,42 @@ export class Plot {
   /** @type {number} */
   #lastT = 0;
   /** @type {boolean} */
-  #enableBackground;
+  #enableBackground = false;
 
-  /** @param {PlotConfig} config */
-  constructor(config) {
-    this.#canvas = config.canvas;
+  /**
+   * @param {String} name Name of the plot
+   * @param {HTMLElement} parent DOM element to create plot in.
+   */
+  constructor(name, parent) {
+    this.name = name;
+    this.#element = document.createElement('div');
+    this.#element.className = 'plot';
+    this.#element.innerHTML = `
+        <div>${name}</div>
+        <div class="pre"></div>
+        <canvas class="canvas" height="200"></canvas>
+        <div class="scalers"></div>
+        <label>bg:</label><input type="checkbox" class="bg">
+    `;
+    parent.append(this.#element);
+    this.#pre = /** @type {HTMLDivElement} */ (this.#element.querySelector('.canvas'));
+    this.#canvas = /** @type {HTMLCanvasElement} */ (this.#element.querySelector('.canvas'));
     this.#ctx = /** @type {CanvasRenderingContext2D} */ (this.#canvas.getContext('2d', { alpha: false }));
     this.#offscreenCanvas = document.createElement('canvas');
     this.#offscreenCtx = /** @type {CanvasRenderingContext2D} */ (this.#offscreenCanvas.getContext('2d', { alpha: false }));
-    this.#enableBackground = config.enableBackground ?? false;
 
+    const scalersDiv = /** @type {HTMLDivElement} */ (this.#element.querySelector('.scalers'));
     this.#scalers = {
-      gx: this.#createScaler(config.scalersDiv, {name: 'gx', color: '#f00', min: -10, max: 10}),
-      gy: this.#createScaler(config.scalersDiv, {name: 'gy', color: '#0f0', min: -10, max: 10}),
-      gz: this.#createScaler(config.scalersDiv, {name: 'gz', color: '#00f', min: -10, max: 10}),
-      hz: this.#createScaler(config.scalersDiv, {name: 'hz', color: '#fff', min: 0, max: 60}),
+      gx: this.#createScaler(scalersDiv, {name: 'gx', color: '#f00', min: -10, max: 10}),
+      gy: this.#createScaler(scalersDiv, {name: 'gy', color: '#0f0', min: -10, max: 10}),
+      gz: this.#createScaler(scalersDiv, {name: 'gz', color: '#00f', min: -10, max: 10}),
+      hz: this.#createScaler(scalersDiv, {name: 'hz', color: '#fff', min: 0, max: 60}),
     };
+
+    const bg = /** @type {HTMLInputElement} */ (this.#element.querySelector('.bg'));
+    bg.addEventListener('change', event => {
+      this.setBackgroundEnabled(bg.checked);
+    });
 
     this.resizeCanvas();
     window.addEventListener('resize', () => this.resizeCanvas());
@@ -74,6 +98,7 @@ export class Plot {
    * @param {import('./types.js').SensorData} data
    */
   addData(data) {
+    this.#pre.textContent = Array.from(data).map((n, i) => i > 1 ? n.toFixed(3): n).join(', ');
     this.#datas.push(data);
   }
 

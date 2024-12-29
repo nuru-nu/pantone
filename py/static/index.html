@@ -7,15 +7,17 @@ body {
   color: #ddd;
   padding-bottom: 100vh;
 }
-#data {
+.plot {
+}
+.data {
   background: black;
   white-space: pre;
 }
-canvas {
+.canvas {
   display: block;
   width: 100%;
 }
-#scalers {
+.scalers {
   background: black;
   display: flex;
   gap: 1em;
@@ -30,10 +32,7 @@ canvas {
 </style>
 
 <title>UDP Data Stream</title>
-<div id="data"></div>
 <div id="state"></div>
-<canvas id="canvas" height="200"></canvas>
-<div id="scalers"></div>
-<label>bg:</label><input type="checkbox" id="bg">
+<div id="plots"></div>
 
 <script type="module" src="./main.js"></script>
