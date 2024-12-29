@@ -110,7 +110,7 @@ class Client(
                     packet.length = buffer.size
                 } catch (e: Exception) {
                     if (isListening) {
-                        println("Error receiving UDP broadcast: ${e.message}")
+                        Log.e(TAG, "Error receiving UDP broadcast: ${e.message}")
                     }
                 }
             }

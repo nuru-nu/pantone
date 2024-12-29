@@ -256,8 +256,9 @@ async def periodic_handler(logger):
 
   try:
     while True:
-      broadcast_sock.sendto(b'PANTONE1', ('255.255.255.255', UDP_BROADCAST_PORT))
-      logger.debug('Broadcast ping sent')
+      msg = b'PANTONE1'
+      broadcast_sock.sendto(msg, ('255.255.255.255', UDP_BROADCAST_PORT))
+      logger.debug(f'Broadcast ping {msg} sent')
       async with aiofiles.open(STATE_FILE, 'w') as f:
           await f.write(json.dumps(state, indent=2))
       await asyncio.sleep(5.0)
