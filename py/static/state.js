@@ -8,6 +8,7 @@
  * @property {number} alpha
  * @property {number} brightness
  * @property {String} device
+ * @property {String} gradient
  * @property {String} algorithm
  * @property {number} param1
  * @property {number} param2
@@ -19,10 +20,12 @@ const INITIAL_STATE = {
   clients: [], active: '',
   alpha: 1.0, brightness: 1.0,
   device: '?',
+  gradient: 'hue',
   algorithm: '?', param1: 1.0, param2: 1.0, param3: 1.0,
 };
 
 const ALGORITHMS = ['gx_gy', 'z_rot'];
+const GRADIENTS = ['hue', 'bw', 'rgb'];
 const DEVICES = ['froggy', 'eurolite'];
 
 class StateManager {
@@ -143,6 +146,8 @@ class StateManager {
 
         ${dropdown('device', DEVICES)}
 
+        ${dropdown('gradient', GRADIENTS)}
+
         ${dropdown('algorithm', ALGORITHMS)}
         ${slider('param1')}
         ${slider('param2')}
@@ -151,7 +156,7 @@ class StateManager {
       </div>
     `;
 
-    for(const id of ['device', 'algorithm']) {
+    for(const id of ['device', 'gradient', 'algorithm']) {
       const select = this.targetElement.querySelector(`#${id}`);
 
       if (select) {

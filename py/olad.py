@@ -3,23 +3,62 @@ import math
 import struct
 
 
-zr_int = 0
+def _normalize(d):
+  def normalize(v):
+    total = sum(v[1::2])
+    return [vv / total if i % 2 else vv for i, vv in enumerate(v)]
+  return {k: normalize(v) for k, v in d.items()}
 
-def to_rgb(sd, *, algorithm, param1, param2, param3):
+
+_GRADIENTS = _normalize({
+    'bw': [(0, 0, 0), 1, (1, 1, 1), 1],
+    'rgb': [(1, 0, 0), 1, (0, 1, 0), 1, (0, 0, 1), 1],
+})
+
+
+def _interpolate_rgb(c1, c2, t):
+  return tuple(a + (b - a) * t for a, b in zip(c1, c2))
+
+
+def _get_rgb(value, gradient):
+  if gradient == 'hue':
+    return colorsys.hsv_to_rgb(value, 1.0, 1.0)
+  if gradient not in _GRADIENTS:
+    raise ValueError(f'Unknown gradient: {gradient}')
+  gradient = _GRADIENTS[gradient]
+  value %= 1
+
+  colors = gradient[::2]
+  distances = gradient[1::2]
+  accumulated = 0
+  for i, dist in enumerate(distances):
+    next_accumulated = accumulated + dist
+    if value <= next_accumulated or i == len(distances) - 1:
+      color1 = colors[i]
+      color2 = colors[(i + 1) % len(colors)]
+      segment_value = (value - accumulated) / dist
+      return _interpolate_rgb(color1, color2, segment_value)
+
+    accumulated = next_accumulated
+
+  raise ValueError(f'Invalid value: {value}')
+
+
+_zr_int = 0
+
+def to_rgb(sd, *, gradient, algorithm, param1, param2, param3):
   if algorithm == 'gx_gy':
     phi = math.atan2(sd.gy, sd.gx)
-    hue = (phi / (2.0 * math.pi) + 0.5)
-    rgb = colorsys.hsv_to_rgb(hue, 1.0, 1.0)
+    value = (phi / (2.0 * math.pi) + 0.5)
   elif algorithm == 'z_rot':
-    global zr_int
+    global _zr_int
     if sd.rz < param2 or sd.rz > param2:
-      zr_int += sd.rz
-    rgb = colorsys.hsv_to_rgb(zr_int * 0.1 * param1, 1.0, 1.0)
+      _zr_int += sd.rz
+    value = _zr_int * 0.1 * param1
   else:
     raise ValueError(f'Unknown algorithm: {algorithm}')
 
-  # Convert HSV to RGB (colorsys uses 0-1 range for hue, not 0-360)
-  return rgb
+  return _get_rgb(value, gradient)
 
 
 def _write_string(s: str, n: int = 4) -> bytes:

@@ -45,10 +45,11 @@ state = dict(
     alpha=1.0,
     brightness=1.0,
     device='eurolite',
+    gradient='hue',
     algorithm='gx_gy',
     param1=1.0, param2=1.0, param3=1.0,
 )
-PRESERVED_STATE = {'alpha', 'brigthness', 'device', 'algorithm', 'param1', 'param2', 'param3'}
+PRESERVED_STATE = {'alpha', 'brigthness', 'device', 'gradient', 'algorithm', 'param1', 'param2', 'param3'}
 serialized = lambda s: {k: v for k, v in s.items() if k in PRESERVED_STATE}  # noqa: E731
 
 
@@ -145,7 +146,7 @@ class UDPProtocol:
     try:
       values = struct.unpack('>9f', data)  # Android: big-endian
       sd = SensorData(*values)
-      rgb = olad.to_rgb(sd, algorithm=state['algorithm'], param1=state['param1'], param2=state['param2'], param3=state['param3'])
+      rgb = olad.to_rgb(sd, gradient=state['gradient'], algorithm=state['algorithm'], param1=state['param1'], param2=state['param2'], param3=state['param3'])
       rgb = smooth(rgb)
 
       active = get_active(addr, t)
