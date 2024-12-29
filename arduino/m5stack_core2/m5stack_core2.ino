@@ -42,7 +42,7 @@ const int udpPort = 9001;
 #define PACKET_BUFFER_LEN 32
 char packetBuffer[PACKET_BUFFER_LEN];
 
-float imuData[9] = {0, 0, 0, 0, 0, 0};
+float imuData[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 #define G 9.81
 
@@ -220,12 +220,12 @@ void loop() {
   imuData[0] += accX * G;
   imuData[1] += accY * G;
   imuData[2] += accZ * G;
-  imuData[3] += gyroX;
-  imuData[4] += gyroY;
-  imuData[5] += gyroZ;
+  imuData[6] += gyroX;
+  imuData[7] += gyroY;
+  imuData[8] += gyroZ;
   if ((i + 1) % SEND_EVERY == 0) {
     float imuPacket[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
-    for (int j = 0; j < 6; j++) {
+    for (int j = 0; j < 9; j++) {
       imuPacket[j] = swp(imuData[j] / SEND_EVERY);
       imuData[j] = 0;
     }
