@@ -19,7 +19,6 @@ import os
 import pathlib
 import socket
 import struct
-import threading
 import weakref
 
 import aiofiles
@@ -91,7 +90,6 @@ class UDPProtocol:
     self._closed = False
     self.osc_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     self.osc_address = ('localhost', 7770)
-    self.lock = threading.Lock()
     self.logger.info('Created UDPProtocol')
 
   def connection_made(self, transport):
@@ -126,11 +124,10 @@ class UDPProtocol:
     t = int(1000 * (datetime.datetime.now().timestamp() - t0))
 
     addr = '{}:{}'.format(*addr)
-    with self.lock:
-      if addr not in state['clients']:
-        state['clients'].append(addr)
-        d = dict(clients=state['clients'])
-        asyncio.create_task(self.state_manager.broadcast(json.dumps(d).encode()))
+    if addr not in state['clients']:
+      state['clients'].append(addr)
+      d = dict(clients=state['clients'])
+      asyncio.create_task(self.state_manager.broadcast(json.dumps(d).encode()))
     client_i = 0
 
     try:
