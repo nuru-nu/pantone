@@ -3,13 +3,20 @@
 /**
  * @typedef {Object} State
  * @property {string} started
- * @property {('xy_hue'|'xz_hue'|'yz_hue')} algorithm
- * @property {number} param1
  * @property {String[]} clients
  * @property {String} active
+ * @property {number} alpha
+ * @property {number} brightness
+ * @property {('xy_hue'|'xz_hue'|'yz_hue')} algorithm
+ * @property {number} param1
  */
 
-const INITIAL_STATE = {started: '?', algorithm: 'xy_hue', param1: 1.0, clients: [], active: ''};
+const INITIAL_STATE = {
+  started: '?',
+  clients: [], active: '',
+  alpha: 1.0, brightness: 1.0,
+  algorithm: 'xy_hue', param1: 1.0,
+};
 
 class StateManager {
   /**
@@ -84,6 +91,20 @@ class StateManager {
   }
 
   render() {
+    const slider = name => `
+        <div class="state-item">
+          <label>${name}:</label>
+          <input
+            type="range"
+            id="${name}"
+            min="0"
+            max="1"
+            step="0.01"
+            value="${this.state[name]}"
+          />
+          <span>${this.state[name].toFixed(2)}</span>
+        </div>
+    `;
     this.targetElement.innerHTML = `
       <div class="state-manager">
         <div class="state-item">
@@ -95,6 +116,9 @@ class StateManager {
           <label>active:</label>
           <span>${this.state.active}</span>
         </div>
+
+        ${slider('alpha')}
+        ${slider('brightness')}
 
         <div class="state-item">
           <label>algorithm:</label>
@@ -109,24 +133,12 @@ class StateManager {
           </select>
         </div>
 
-        <div class="state-item">
-          <label>param1:</label>
-          <input
-            type="range"
-            id="param1"
-            min="0"
-            max="1"
-            step="0.01"
-            value="${this.state.param1}"
-          />
-          <span>${this.state.param1.toFixed(2)}</span>
-        </div>
+        ${slider('param1')}
+
       </div>
     `;
 
-    // Add event listeners
     const algorithmSelect = this.targetElement.querySelector('#algorithm');
-    const param1Input = this.targetElement.querySelector('#param1');
 
     if (algorithmSelect) {
       algorithmSelect.addEventListener('change', (e) => {
@@ -135,11 +147,14 @@ class StateManager {
       });
     }
 
-    if (param1Input) {
-      param1Input.addEventListener('input', (e) => {
-        const target = /** @type {HTMLInputElement} */ (e.target);
-        this.updateStateKey('param1', parseFloat(target.value));
-      });
+    for(const id of ['alpha', 'brightness', 'param1']) {
+      const el = this.targetElement.querySelector(`#${id}`);
+      if (el) {
+        el.addEventListener('input', (e) => {
+          const target = /** @type {HTMLInputElement} */ (e.target);
+          this.updateStateKey(/** @type {keyof State} */ (id), parseFloat(target.value));
+        });
+      }
     }
   }
 }

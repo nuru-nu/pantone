@@ -37,7 +37,7 @@ def _write_blob(x: bytes, n: int = 4) -> bytes:
   return result
 
 
-def to_osc(r, g, b, device='eurolite'):
+def to_osc(r, g, b, brightness, device='eurolite'):
 
   values = bytearray(16)
 
@@ -45,7 +45,7 @@ def to_osc(r, g, b, device='eurolite'):
     return max(0, min(255, int(x * 255)))
 
   if device == 'froggy':
-    values[0] = 255
+    values[0] = to_value(brightness)
     values[3] = to_value(r)
     values[4] = to_value(g)
     values[5] = to_value(b)
@@ -54,7 +54,7 @@ def to_osc(r, g, b, device='eurolite'):
     values[0] = to_value(r)
     values[1] = to_value(g)
     values[2] = to_value(b)
-    values[3] = 255
+    values[3] = to_value(brightness)
   else:
     assert ValueError(f'Unknown device={device}')
 

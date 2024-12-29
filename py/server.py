@@ -43,9 +43,11 @@ state = dict(
     clients=[],
     active='',
     algorithm='xy_hue',
+    alpha=1.0,
+    brightness=1.0,
     param1=1.0,
 )
-PRESERVED_STATE = {'algorithm', 'param1'}
+PRESERVED_STATE = {'algorithm', 'alpha', 'brigthness', 'param1'}
 serialized = lambda s: {k: v for k, v in s.items() if k in PRESERVED_STATE}  # noqa: E731
 
 
@@ -83,8 +85,8 @@ def smooth(values):
   global smoothened
   if not smoothened:
     smoothened = values
-  a = state['param1']
-  f = lambda s, x: x * a + (1 - a) * s  # noqa: E731
+  alpha = state['alpha']
+  f = lambda s, x: x * alpha + (1 - alpha) * s  # noqa: E731
   smoothened = tuple(map(f, smoothened, values))
   return smoothened
 
@@ -151,7 +153,7 @@ class UDPProtocol:
         d = dict(active=state['active'])
         asyncio.create_task(self.state_manager.broadcast(json.dumps(d).encode()))
       if active == addr:
-        msg = olad.to_osc(*rgb)
+        msg = olad.to_osc(*rgb, state['brightness'])
         try:
           self.osc_socket.sendto(msg, self.osc_address)
         except Exception as e:
