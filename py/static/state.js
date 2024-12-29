@@ -5,9 +5,10 @@
  * @property {string} started
  * @property {('xy_hue'|'xz_hue'|'yz_hue')} algorithm
  * @property {number} param1
+ * @property {String[]} clients
  */
 
-const INITIAL_STATE = {started: '?', algorithm: 'xy_hue', param1: 0};
+const INITIAL_STATE = {started: '?', algorithm: 'xy_hue', param1: 1.0, clients: []};
 
 class StateManager {
   /**

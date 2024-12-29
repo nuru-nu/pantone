@@ -43,9 +43,10 @@ STATE_FILE = 'state.json'
 state = dict(
     started=datetime.datetime.now().strftime('%H:%M:%S'),
     algorithm='xy_hue',
-    param1=0,
+    param1=1.0,
+    clients=[],
 )
-serialized = lambda s: {k: v for k, v in s.items() if k not in {'started'}}  # noqa: E731
+serialized = lambda s: {k: v for k, v in s.items() if k not in {'started', 'clients'}}  # noqa: E731
 
 
 def parse_args():
@@ -124,6 +125,7 @@ class UDPProtocol:
 
     t = int(1000 * (datetime.datetime.now().timestamp() - t0))
 
+    addr = '{}:{}'.format(*addr)
     with self.lock:
       if addr not in state['clients']:
         state['clients'].append(addr)
