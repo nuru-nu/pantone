@@ -41,11 +41,12 @@ log_file = None
 STATE_FILE = 'state.json'
 state = dict(
     started=datetime.datetime.now().strftime('%H:%M:%S'),
+    clients=[],
     algorithm='xy_hue',
     param1=1.0,
-    clients=[],
 )
-serialized = lambda s: {k: v for k, v in s.items() if k not in {'started', 'clients'}}  # noqa: E731
+PRESERVED_STATE = {'algorithm', 'param1'}
+serialized = lambda s: {k: v for k, v in s.items() if k in PRESERVED_STATE}  # noqa: E731
 
 
 def parse_args():
