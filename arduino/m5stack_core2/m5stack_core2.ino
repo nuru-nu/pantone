@@ -34,6 +34,7 @@
 #include <WiFiUdp.h>
 
 #include "wifi_credentials.h"
+int wifi_i = 0;
 char udpAddress[17];
 const int udpPort = 9001;
 #define UDP_BROADCAST_PORT 9002
@@ -105,7 +106,6 @@ void setup() {
 
   displayOn();
 
-  int wifi_i = 0;
   bool connected = false;
   M5.Lcd.setCursor(10, 10);
   M5.Lcd.print("Wifi: ");
@@ -126,8 +126,7 @@ void setup() {
   M5.Lcd.clear();
   Serial.printf("\nConnected to %s", ssids[wifi_i]);
   Serial.printf("Device IP: %s\n", WiFi.localIP().toString().c_str());
-  M5.Lcd.setCursor(10, 40);
-  M5.Lcd.printf("Device: %s          ", WiFi.localIP().toString().c_str());
+  showWifi();
   strcpy(udpAddress, "");
 
   udp.begin(UDP_BROADCAST_PORT);
@@ -156,6 +155,17 @@ void displayOff() {
   displayState = 0;
 }
 
+void showWifi() {
+  if (WiFi.status() == WL_CONNECTED) {
+    M5.Lcd.setCursor(10, 40);
+    M5.Lcd.printf("Wifi: %s", ssids[wifi_i]);
+    M5.Lcd.setCursor(10, 60);
+    M5.Lcd.printf("Device: %s", WiFi.localIP().toString().c_str());
+    M5.Lcd.setCursor(10, 80);
+    M5.Lcd.printf("Server: %s         ", udpAddress);
+  }
+}
+
 void displayOn() {
   // M5.Axp.SetLDOEnable(2, true);
   M5.Axp.SetDCDC3(true);
@@ -166,10 +176,7 @@ void displayOn() {
   M5.Lcd.setTextSize(2);
   M5.Lcd.fillScreen(BLACK);
   M5.Lcd.setTextColor(WHITE, BLACK);
-  if (WiFi.status() == WL_CONNECTED) {
-    M5.Lcd.setCursor(10, 40);
-    M5.Lcd.printf("IP: %s          ", WiFi.localIP().toString().c_str());
-  }
+  showWifi();
   displayState = 1;
 }
 
@@ -187,13 +194,13 @@ void loop() {
     Serial.printf("Broadcast: %s\n", packetBuffer);
     if (strcmp(packetBuffer, PROTOCOL_IDENTIFIER)) {
       Serial.printf("Invalid PROTOCOL_IDENTIFIER: %s\n", packetBuffer);
-      M5.Lcd.setCursor(10, 60);
+      M5.Lcd.setCursor(10, 80);
       M5.Lcd.printf("?!: %s", packetBuffer);
       return;
     }
     strcpy(udpAddress, udp.remoteIP().toString().c_str());
     Serial.printf("Server: %s\n", udpAddress);
-    M5.Lcd.setCursor(10, 60);
+    M5.Lcd.setCursor(10, 80);
     M5.Lcd.printf("Server: %s         ", udpAddress);
   }
 
@@ -229,9 +236,9 @@ void loop() {
 
   if (i % EVERY1 == 0) {
     // M5.Lcd.fillRect(0, 100, 320, 180, BLACK);
-    M5.Lcd.setCursor(10, 100);
-    M5.Lcd.printf("Acc %+.2f %+.2f %+.2f    ", accX, accY, accZ);
     M5.Lcd.setCursor(10, 120);
+    M5.Lcd.printf("Acc %+.2f %+.2f %+.2f    ", accX, accY, accZ);
+    M5.Lcd.setCursor(10, 140);
     M5.Lcd.printf("Gyr %+5.0f %+5.0f %+5.0f    ", gyroX, gyroY, gyroZ);
   }
 
