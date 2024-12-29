@@ -6,7 +6,7 @@ import struct
 zr_int = 0
 
 def to_rgb(sd, *, algorithm, param1, param2, param3):
-  if algorithm == 'xy_hue':
+  if algorithm == 'gx_gy':
     phi = math.atan2(sd.gy, sd.gx)
     hue = (phi / (2.0 * math.pi) + 0.5)
     rgb = colorsys.hsv_to_rgb(hue, 1.0, 1.0)

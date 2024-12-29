@@ -45,7 +45,7 @@ state = dict(
     alpha=1.0,
     brightness=1.0,
     device='eurolite',
-    algorithm='xy_hue',
+    algorithm='gx_gy',
     param1=1.0, param2=1.0, param3=1.0,
 )
 PRESERVED_STATE = {'alpha', 'brigthness', 'device', 'algorithm', 'param1', 'param2', 'param3'}

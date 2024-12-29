@@ -22,7 +22,7 @@ const INITIAL_STATE = {
   algorithm: '?', param1: 1.0, param2: 1.0, param3: 1.0,
 };
 
-const ALGORITHMS = ['xy_hue', 'z_rot'];
+const ALGORITHMS = ['gx_gy', 'z_rot'];
 const DEVICES = ['froggy', 'eurolite'];
 
 class StateManager {
