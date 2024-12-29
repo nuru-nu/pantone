@@ -6,9 +6,10 @@
  * @property {('xy_hue'|'xz_hue'|'yz_hue')} algorithm
  * @property {number} param1
  * @property {String[]} clients
+ * @property {String} active
  */
 
-const INITIAL_STATE = {started: '?', algorithm: 'xy_hue', param1: 1.0, clients: []};
+const INITIAL_STATE = {started: '?', algorithm: 'xy_hue', param1: 1.0, clients: [], active: ''};
 
 class StateManager {
   /**
@@ -88,6 +89,11 @@ class StateManager {
         <div class="state-item">
           <label>timestamp:</label>
           <span>${this.state.started}</span>
+        </div>
+
+        <div class="state-item">
+          <label>active:</label>
+          <span>${this.state.active}</span>
         </div>
 
         <div class="state-item">

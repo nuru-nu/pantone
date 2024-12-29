@@ -42,11 +42,20 @@ STATE_FILE = 'state.json'
 state = dict(
     started=datetime.datetime.now().strftime('%H:%M:%S'),
     clients=[],
+    active='',
     algorithm='xy_hue',
     param1=1.0,
 )
 PRESERVED_STATE = {'algorithm', 'param1'}
 serialized = lambda s: {k: v for k, v in s.items() if k in PRESERVED_STATE}  # noqa: E731
+
+
+last_by_addr = {}
+def get_active(addr, ms, limit=1000):
+  last_by_addr[addr] = ms
+  for k, v in last_by_addr.items():
+    if ms - v < limit:
+      return k
 
 
 def parse_args():
@@ -136,17 +145,24 @@ class UDPProtocol:
       sd = SensorData(*values)
       rgb = olad.to_rgb(sd, state['algorithm'])
       rgb = smooth(rgb)
-      msg = olad.to_osc(*rgb)
-      try:
-        self.osc_socket.sendto(msg, self.osc_address)
-      except Exception as e:
-        self.logger.error(f'Error forwarding OSC packet: {e}')
+
+      active = get_active(addr, t)
+      if active != state['active']:
+        state['active'] = active
+        d = dict(active=state['active'])
+        asyncio.create_task(self.state_manager.broadcast(json.dumps(d).encode()))
+      if active == addr:
+        msg = olad.to_osc(*rgb)
+        try:
+          self.osc_socket.sendto(msg, self.osc_address)
+        except Exception as e:
+          self.logger.error(f'Error forwarding OSC packet: {e}')
 
       ws_msg = struct.pack('>L', t)  # 32 bits = 49.71 days of milliseconds
       ws_msg += struct.pack('B', client_i)
       ws_msg += struct.pack('>6f', sd.gx, sd.gy, sd.gz, *rgb)
       asyncio.create_task(self.data_manager.broadcast(ws_msg))
-      asyncio.create_task(self.data_file.write(data))
+      asyncio.create_task(self.data_file.write(ws_msg))
       # await self.data_file.flush()
 
       # self.logger.debug(f'Received packet from {addr}: {values}')
