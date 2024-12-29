@@ -7,6 +7,9 @@ body {
   color: #ddd;
   padding-bottom: 100vh;
 }
+#help {
+  margin-bottom: 1em;
+}
 .state-manager {
   background: black;
   display: flex;
@@ -34,6 +37,11 @@ body {
 </style>
 
 <title>UDP Data Stream</title>
+<div id="help">
+  alpha: immediate update (1.0) ... exponential averaging (&lt;1.0)<br>
+  algorithm=xy_hue: absolute z rotation wrt gravity<br>
+  algorithm=z_rot: param1 sensitivity, param2 thresold<br>
+</div>
 <div id="state"></div>
 <div id="plots"></div>
 

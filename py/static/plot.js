@@ -59,6 +59,7 @@ export class Plot {
       gx: this.#createScaler(scalersDiv, {name: 'gx', color: '#f00', min: -10, max: 10}),
       gy: this.#createScaler(scalersDiv, {name: 'gy', color: '#0f0', min: -10, max: 10}),
       gz: this.#createScaler(scalersDiv, {name: 'gz', color: '#00f', min: -10, max: 10}),
+      rz: this.#createScaler(scalersDiv, {name: 'rz', color: '#ff0', min: -200, max: 200}),
       hz: this.#createScaler(scalersDiv, {name: 'hz', color: '#fff', min: 0, max: 60}),
     };
 
@@ -117,13 +118,13 @@ export class Plot {
     const n = this.#datas.length;
     // console.log(n);
     if (n) {
-      const [t, i, gx, gy, gz, r, g, b] = this.#datas[n - 1];
+      const [t, i, gx, gy, gz, rz, r, g, b] = this.#datas[n - 1];
 
       this.#datas = [];
 
       this.#ctx.fillStyle = `rgb(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)})`;
       this.#ctx.fillRect(this.#canvas.width - 1, 0, this.#canvas.width, this.#canvas.height);
-      this.#drawGraphs(t, gx, gy, gz);
+      this.#drawGraphs(t, gx, gy, gz, rz);
 
       if (this.#enableBackground) {
         document.body.style.background = this.#ctx.fillStyle;
@@ -138,8 +139,9 @@ export class Plot {
    * @param {number} gx
    * @param {number} gy
    * @param {number} gz
+   * @param {number} rz
    */
-  #drawGraphs(t, gx, gy, gz) {
+  #drawGraphs(t, gx, gy, gz, rz) {
     const x = this.#canvas.width - 1;
     const dtMs = Math.max(10, (t - this.#lastT));
     const hz = 1 / (dtMs / 1e3);
@@ -148,6 +150,7 @@ export class Plot {
     this.#scalers.gx.addValue(gx);
     this.#scalers.gy.addValue(gy);
     this.#scalers.gz.addValue(gz);
+    this.#scalers.rz.addValue(rz);
     this.#scalers.hz.addValue(hz);
 
     const set = (y, color) => {
@@ -168,6 +171,7 @@ export class Plot {
     set(this.#scalers.gx.scale(gx), this.#scalers.gx.color);
     set(this.#scalers.gy.scale(gy), this.#scalers.gy.color);
     set(this.#scalers.gz.scale(gz), this.#scalers.gz.color);
+    set(this.#scalers.rz.scale(rz), this.#scalers.rz.color);
     set(this.#scalers.hz.scale(hz), this.#scalers.hz.color);
   }
 

@@ -10,6 +10,8 @@
  * @property {String} device
  * @property {String} algorithm
  * @property {number} param1
+ * @property {number} param2
+ * @property {number} param3
  */
 
 const INITIAL_STATE = {
@@ -17,10 +19,10 @@ const INITIAL_STATE = {
   clients: [], active: '',
   alpha: 1.0, brightness: 1.0,
   device: '?',
-  algorithm: '?', param1: 1.0,
+  algorithm: '?', param1: 1.0, param2: 1.0, param3: 1.0,
 };
 
-const ALGORITHMS = ['xy_hue', 'xz_hue', 'yz_hue'];
+const ALGORITHMS = ['xy_hue', 'z_rot'];
 const DEVICES = ['froggy', 'eurolite'];
 
 class StateManager {
@@ -143,6 +145,8 @@ class StateManager {
 
         ${dropdown('algorithm', ALGORITHMS)}
         ${slider('param1')}
+        ${slider('param2')}
+        ${slider('param3')}
 
       </div>
     `;
@@ -158,7 +162,7 @@ class StateManager {
       }
     }
 
-    for(const id of ['alpha', 'brightness', 'param1']) {
+    for(const id of ['alpha', 'brightness', 'param1', 'param2', 'param3']) {
       const el = this.targetElement.querySelector(`#${id}`);
       if (el) {
         el.addEventListener('input', (e) => {

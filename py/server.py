@@ -46,9 +46,9 @@ state = dict(
     brightness=1.0,
     device='eurolite',
     algorithm='xy_hue',
-    param1=1.0,
+    param1=1.0, param2=1.0, param3=1.0,
 )
-PRESERVED_STATE = {'alpha', 'brigthness', 'device', 'algorithm', 'param1'}
+PRESERVED_STATE = {'alpha', 'brigthness', 'device', 'algorithm', 'param1', 'param2', 'param3'}
 serialized = lambda s: {k: v for k, v in s.items() if k in PRESERVED_STATE}  # noqa: E731
 
 
@@ -145,7 +145,7 @@ class UDPProtocol:
     try:
       values = struct.unpack('>9f', data)  # Android: big-endian
       sd = SensorData(*values)
-      rgb = olad.to_rgb(sd, state['algorithm'])
+      rgb = olad.to_rgb(sd, algorithm=state['algorithm'], param1=state['param1'], param2=state['param2'], param3=state['param3'])
       rgb = smooth(rgb)
 
       active = get_active(addr, t)
@@ -162,7 +162,7 @@ class UDPProtocol:
 
       ws_msg = struct.pack('>L', t)  # 32 bits = 49.71 days of milliseconds
       ws_msg += struct.pack('B', client_i)
-      ws_msg += struct.pack('>6f', sd.gx, sd.gy, sd.gz, *rgb)
+      ws_msg += struct.pack('>7f', sd.gx, sd.gy, sd.gz, sd.rz, *rgb)
       asyncio.create_task(self.data_manager.broadcast(ws_msg))
       asyncio.create_task(self.data_file.write(ws_msg))
       # await self.data_file.flush()
