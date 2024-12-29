@@ -37,7 +37,7 @@ def _write_blob(x: bytes, n: int = 4) -> bytes:
   return result
 
 
-def to_osc(r, g, b, brightness, device='eurolite'):
+def to_osc(r, g, b, *, brightness, device):
 
   values = bytearray(16)
 

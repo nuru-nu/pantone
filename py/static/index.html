@@ -7,27 +7,29 @@ body {
   color: #ddd;
   padding-bottom: 100vh;
 }
-.plot {
-}
-.data {
-  background: black;
-  white-space: pre;
-}
-.canvas {
-  display: block;
-  width: 100%;
-}
-.scalers {
-  background: black;
-  display: flex;
-  gap: 1em;
-  white-space: pre;
-}
 .state-manager {
   background: black;
   display: flex;
-  gap: 2em;
+  flex-wrap: wrap;
+  column-gap: 2em;
   align-items: center;
+}
+.plot {
+  margin-top: 1em;
+  .data {
+    background: black;
+    white-space: pre;
+  }
+  .canvas {
+    display: block;
+    width: 100%;
+  }
+  .scalers {
+    background: black;
+    display: flex;
+    gap: 1em;
+    white-space: pre;
+  }
 }
 </style>
 

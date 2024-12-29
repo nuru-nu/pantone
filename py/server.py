@@ -42,12 +42,13 @@ state = dict(
     started=datetime.datetime.now().strftime('%H:%M:%S'),
     clients=[],
     active='',
-    algorithm='xy_hue',
     alpha=1.0,
     brightness=1.0,
+    device='eurolite',
+    algorithm='xy_hue',
     param1=1.0,
 )
-PRESERVED_STATE = {'algorithm', 'alpha', 'brigthness', 'param1'}
+PRESERVED_STATE = {'alpha', 'brigthness', 'device', 'algorithm', 'param1'}
 serialized = lambda s: {k: v for k, v in s.items() if k in PRESERVED_STATE}  # noqa: E731
 
 
@@ -153,7 +154,7 @@ class UDPProtocol:
         d = dict(active=state['active'])
         asyncio.create_task(self.state_manager.broadcast(json.dumps(d).encode()))
       if active == addr:
-        msg = olad.to_osc(*rgb, state['brightness'])
+        msg = olad.to_osc(*rgb, brightness=state['brightness'], device=state['device'])
         try:
           self.osc_socket.sendto(msg, self.osc_address)
         except Exception as e:

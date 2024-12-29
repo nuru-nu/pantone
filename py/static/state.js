@@ -7,7 +7,8 @@
  * @property {String} active
  * @property {number} alpha
  * @property {number} brightness
- * @property {('xy_hue'|'xz_hue'|'yz_hue')} algorithm
+ * @property {String} device
+ * @property {String} algorithm
  * @property {number} param1
  */
 
@@ -15,8 +16,12 @@ const INITIAL_STATE = {
   started: '?',
   clients: [], active: '',
   alpha: 1.0, brightness: 1.0,
-  algorithm: 'xy_hue', param1: 1.0,
+  device: '?',
+  algorithm: '?', param1: 1.0,
 };
+
+const ALGORITHMS = ['xy_hue', 'xz_hue', 'yz_hue'];
+const DEVICES = ['froggy', 'eurolite'];
 
 class StateManager {
   /**
@@ -105,6 +110,20 @@ class StateManager {
           <span>${this.state[name].toFixed(2)}</span>
         </div>
     `;
+    const dropdown = (name, choices) => `
+        <div class="state-item">
+          <label>${name}:</label>
+          <select id="${name}">
+            ${choices
+              .map(value => `
+                <option value="${value}" ${this.state[name] === value ? 'selected' : ''}>
+                  ${value}
+                </option>
+              `)
+              .join('')}
+          </select>
+        </div>
+    `;
     this.targetElement.innerHTML = `
       <div class="state-manager">
         <div class="state-item">
@@ -120,31 +139,23 @@ class StateManager {
         ${slider('alpha')}
         ${slider('brightness')}
 
-        <div class="state-item">
-          <label>algorithm:</label>
-          <select id="algorithm">
-            ${['xy_hue', 'xz_hue', 'yz_hue']
-              .map(alg => `
-                <option value="${alg}" ${this.state.algorithm === alg ? 'selected' : ''}>
-                  ${alg}
-                </option>
-              `)
-              .join('')}
-          </select>
-        </div>
+        ${dropdown('device', DEVICES)}
 
+        ${dropdown('algorithm', ALGORITHMS)}
         ${slider('param1')}
 
       </div>
     `;
 
-    const algorithmSelect = this.targetElement.querySelector('#algorithm');
+    for(const id of ['device', 'algorithm']) {
+      const select = this.targetElement.querySelector(`#${id}`);
 
-    if (algorithmSelect) {
-      algorithmSelect.addEventListener('change', (e) => {
-        const target = /** @type {HTMLSelectElement} */ (e.target);
-        this.updateStateKey('algorithm', target.value);
-      });
+      if (select) {
+        select.addEventListener('change', (e) => {
+          const target = /** @type {HTMLSelectElement} */ (e.target);
+          this.updateStateKey(/** @type {keyof State} */ (id), target.value);
+        });
+      }
     }
 
     for(const id of ['alpha', 'brightness', 'param1']) {
