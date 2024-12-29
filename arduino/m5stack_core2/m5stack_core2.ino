@@ -18,6 +18,8 @@
 
 // ms between measurements
 #define DELAY 10
+// how often to send measurements
+#define SEND_EVERY 10
 // cycles to update fast display (IMU)
 #define EVERY1 10
 // cycles to update slow display (I, bat)
@@ -38,6 +40,8 @@ const int udpPort = 9001;
 #define PROTOCOL_IDENTIFIER "PANTONE1"
 #define PACKET_BUFFER_LEN 32
 char packetBuffer[PACKET_BUFFER_LEN];
+
+float imuData[9] = {0, 0, 0, 0, 0, 0};
 
 #define G 9.81
 
@@ -206,10 +210,22 @@ void loop() {
 //   Serial.print(gyroZ, 3); Serial.println();
 // #endif
 
-  float imuData[9] = {swp(accX * G), swp(accY * G), swp(accZ * G), swp(gyroX), swp(gyroY), swp(gyroZ), swp(0), swp(0), swp(0)};
-  udp.beginPacket(udpAddress, udpPort);
-  udp.write((uint8_t*)imuData, sizeof(imuData));
-  udp.endPacket();
+  imuData[0] += accX * G;
+  imuData[1] += accY * G;
+  imuData[2] += accZ * G;
+  imuData[3] += gyroX;
+  imuData[4] += gyroY;
+  imuData[5] += gyroZ;
+  if ((i + 1) % SEND_EVERY == 0) {
+    float imuPacket[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+    for (int j = 0; j < 6; j++) {
+      imuPacket[j] = swp(imuData[j] / SEND_EVERY);
+      imuData[j] = 0;
+    }
+    udp.beginPacket(udpAddress, udpPort);
+    udp.write((uint8_t*)imuPacket, sizeof(imuPacket));
+    udp.endPacket();
+  }
 
   if (i % EVERY1 == 0) {
     // M5.Lcd.fillRect(0, 100, 320, 180, BLACK);
