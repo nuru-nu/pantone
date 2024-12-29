@@ -125,7 +125,8 @@ export class Plot {
     this.#scalers.hz.addValue(hz);
 
     const set = (y, color) => {
-      y *= this.#canvas.height;
+      y *= -this.#canvas.height;
+      y += this.#canvas.height;
       this.#ctx.strokeStyle = 'black';
       this.#ctx.beginPath();
       this.#ctx.moveTo(x, y - 5);
