@@ -19,6 +19,7 @@ import os
 import pathlib
 import socket
 import struct
+import threading
 import weakref
 
 import aiofiles
@@ -80,14 +81,17 @@ def smooth(values):
 
 
 class UDPProtocol:
-  def __init__(self, data_manager, data_file):
+  def __init__(self, data_manager, state_manager, data_file):
     self.data_manager = data_manager
+    self.state_manager = state_manager
     self.data_file = data_file
     self.transport = None
     self.logger = logging.getLogger('UDPProtocol')
     self._closed = False
     self.osc_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     self.osc_address = ('localhost', 7770)
+    self.lock = threading.Lock()
+    self.logger.info('Created UDPProtocol')
 
   def connection_made(self, transport):
     self.transport = transport
@@ -120,6 +124,13 @@ class UDPProtocol:
 
     t = int(1000 * (datetime.datetime.now().timestamp() - t0))
 
+    with self.lock:
+      if addr not in state['clients']:
+        state['clients'].append(addr)
+        d = dict(clients=state['clients'])
+        asyncio.create_task(self.state_manager.broadcast(json.dumps(d).encode()))
+    client_i = 0
+
     try:
       values = struct.unpack('>9f', data)  # Android: big-endian
       sd = SensorData(*values)
@@ -132,6 +143,7 @@ class UDPProtocol:
         self.logger.error(f'Error forwarding OSC packet: {e}')
 
       ws_msg = struct.pack('>L', t)  # 32 bits = 49.71 days of milliseconds
+      ws_msg += struct.pack('B', client_i)
       ws_msg += struct.pack('>6f', sd.gx, sd.gy, sd.gz, *rgb)
       asyncio.create_task(self.data_manager.broadcast(ws_msg))
       asyncio.create_task(self.data_file.write(data))
@@ -298,7 +310,7 @@ async def main():
   loop = asyncio.get_event_loop()
 
   transport, protocol = await loop.create_datagram_endpoint(
-      lambda: UDPProtocol(data_manager, data_file),
+      lambda: UDPProtocol(data_manager, state_manager, data_file),
       local_addr=('0.0.0.0', UDP_IMU_PORT)
   )
   del protocol

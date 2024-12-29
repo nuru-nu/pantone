@@ -90,9 +90,9 @@ export class Plot {
     );
 
     const n = this.#datas.length;
-    console.log(n);
+    // console.log(n);
     if (n) {
-      const [t, gx, gy, gz, r, g, b] = this.#datas[n - 1];
+      const [t, i, gx, gy, gz, r, g, b] = this.#datas[n - 1];
 
       this.#datas = [];
 
