@@ -3,12 +3,17 @@
 Simple Android app that streams sensor data.
 
 
-## Raspbian Server
+## Server
 
 Targeting Bookworm. The server receives sensor data from the Android application
 and converts it to OSC messages that are sent to `olad` on port 7770.
 
-Installation:
+Tested with
+
+- OS X: `olad` can be installed with `brew install olad`
+- Raspbian Bookworm: dependencies can be installed with `./install_raspbian.sh`
+
+Then install Python dependencies:
 
 ```bash
 ./install_raspbian.sh
@@ -18,17 +23,62 @@ python3 -m venv env
 pip install -r requirements.txt
 ```
 
-Running the server
+And run the server:
 
 ```bash
-cd py
-. env/bin/activate
-python server.py
-# WIP
-python server2.py
+./py/env/bin/python py/server.py
 ```
 
 Then navigate to http://localhost:8000 to see server status and stats.
+
+
+## Set up as service (Raspbian)
+
+Make sure to execute this in the repo, after verifying that
+`./py/env/bin/python py/server.py` works
+
+```bash
+cat <<EOF | sudo tee /etc/systemd/system/pantone.service
+[Unit]
+Description=Pantone Server
+After=network.target
+
+[Service]
+Nice=-10
+ExecStart=$(pwd)/py/env/bin/python $(pwd)/py/server.py
+WorkingDirectory=$(pwd)
+User=$USER
+Restart=always
+RestartSec=3
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=pantone
+PAMName=login
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable pantone.service
+sudo systemctl start pantone.service
+```
+
+Then follow logs with `sudo journalctl -f -u pantone`
+
+
+## Gravity Sensors
+
+There are two implementations:
+
+- Android: Run `nu.nuru.hellogravity.MyApplication` from `app/src/main/java`.
+- M5Stack Core2: Install `arduino/m5stack_core2/m5stack_core2.ino` via Arduino.
+  Note that you need to `cp wifi_credentials.h.example wifi_credentials.h` and
+  update the network credentials for this to work.
+
+In either case, the sensor will connect to WLAN, wait for a UDP broadcast
+message sent by `py/server.py` and then start streaming UDP messages with sensor
+measurements to the server.
 
 
 ## DMX: OLA Server
@@ -42,7 +92,7 @@ requires some extra driver and does *not* work out of the box on Linux!)
 
 The setup is as follows:
 
-1. Connect to Rasperry Pi and set up wifis via `raspi-config`.
+1. Connect to Raspberry Pi and set up wifis via `raspi-config`.
 2. For debugging (e.g. checking for OSC messages), OLA server can be started
    manually via `sudo systemctl stop olad` followed by
    `/usr/bin/olad --config-dir /etc/ola --log-level 4`
@@ -55,19 +105,12 @@ The setup is as follows:
 
 Run it:
 
-1. Get Raspberry Pi address via `ping -c1 dmxserver.local` and update this in
-   app's UI.
-2. Check http://dmxserver.local:9090 that we have enttec universe with OSC
+1. Run server
+2. Verify http://nurupi2.local:8000 is up.
+3. Start sensor(s)
+4. Check http://nurupi2.local:9090 that we have enttec universe with OSC
    input port.
-3. Observe DMX Monitor while running app. Make sure parcan colors match.
-4. Main app runs at http://dmxserver.local:8000
-
-
-## M5Stack sensor
-
-Rename `arduino/m5stack_core2/wifi_credentials.h.example` to
-`arduino/m5stack_core2/wifi_credentials.h` and compile/upload sketch to M5Stack
-(see `arduino/m5stack_core2/m5stack_core2.ino` for installation instructions).
+5. Observe DMX Monitor while running app. Make sure parcan colors match.
 
 
 ## Deprecated
