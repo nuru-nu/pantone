@@ -40,7 +40,7 @@ class Client(
     private var broadcastSocket: DatagramSocket? = null
     private var isListening = false
 
-    private val timeoutSeconds = 20
+    private val timeoutSeconds = 3600
     private var timeoutJob: Job? = null
     private val lastMessageTimestamp = AtomicLong(System.currentTimeMillis())
     private val isTimeout = AtomicBoolean(false)
