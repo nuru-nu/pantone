@@ -1,7 +1,4 @@
 <resources>
     <string name="app_name">Hello Gravity</string>
     <string name="preferences_log_csv">log_csv</string>
-    <string name="preferences_dmxserver_ip">dmxserver_ip</string>
-    <string name="preferences_coordinate">coordinate</string>
-    <string name="preferences_stream">stream</string>
 </resources>

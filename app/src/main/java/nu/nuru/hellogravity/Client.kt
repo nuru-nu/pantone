@@ -3,21 +3,18 @@ package nu.nuru.hellogravity
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import org.json.JSONException
-import org.json.JSONObject
-import java.io.BufferedReader
-import java.io.IOException
-import java.io.InputStreamReader
-import java.io.OutputStreamWriter
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
 import java.net.InetSocketAddress
-import java.net.Socket
-import java.util.Timer
-import java.util.TimerTask
+import java.net.NetworkInterface
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 
+const val PROTOCOL = "PANTONE1"
 
 interface TcpClientListener {
     fun addressChanged(address: String?);
@@ -26,76 +23,41 @@ interface TcpClientListener {
 }
 
 class Client(
-    private val tcpPort: Int = 9000,
     private val udpPort: Int = 9001,
+    private val udpBroadcastPort: Int = 9002,
+    private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO),
 ) {
 
-    private var serverIp: String? = null
     private var udpSocket: DatagramSocket = DatagramSocket()
-    private var serverAddress: InetAddress? = null
     private var udpSent = 0
     private var udpSendErrors = 0
-    val networkScope = CoroutineScope(Dispatchers.IO)
-    private var socket: Socket? = null
-    private var reader: BufferedReader? = null
-    private var writer: OutputStreamWriter? = null
     private val stats = NetworkStats()
 
-    private var data = JSONObject()
-    private var address: String? = null
-    private var connected: Boolean = false
-    private var inControl: Boolean = false
-    private var pings: Int = 0
+    private var serverAddress: InetAddress? = null
+    private var selfAddress: InetAddress? = null
+    private var error: String? = null
 
-    private val timer = Timer()
-    private var heartbeatTask: TimerTask? = null
-    private var retryTask: TimerTask? = null
+    private var broadcastSocket: DatagramSocket? = null
+    private var isListening = false
+
+    private val timeoutSeconds = 20
+    private var timeoutJob: Job? = null
+    private val lastMessageTimestamp = AtomicLong(System.currentTimeMillis())
+    private val isTimeout = AtomicBoolean(false)
+
+
     private val listeners: MutableSet<TcpClientListener> = mutableSetOf()
 
     private var retries = 0
     private val retryDelaySecs = listOf(1, 1, 1, 5, 5, 5, 10, 10, 10, 60)
-    private val timeoutMillis = 1000
 
     private val lock = Any()
-
-    fun connect(newServerIp: String?): Boolean {
-
-        if (newServerIp == serverIp && connected) {
-            Log.d(TAG, "TcpClient: already connected to $newServerIp")
-            return true
-        }
-        Log.d(TAG, "TcpClient: trying to connect to $newServerIp")
-        synchronized (lock) {
-            serverIp = newServerIp
-            reset()
-            if (serverIp == null) return false
-            serverAddress = InetAddress.getByName(serverIp)
-
-            try {
-                socket = Socket()
-                socket!!.connect(InetSocketAddress(serverIp, tcpPort), timeoutMillis)
-                reader = BufferedReader(InputStreamReader(socket?.getInputStream()))
-                writer = OutputStreamWriter(socket?.getOutputStream())
-                if (updateFromJson(reader?.readLine(), true)) {
-                    setConnected(true)
-                    retries = 0
-                    startHeartbeat()
-                    return true
-                } else {}
-            } catch (e: Exception) {
-                Log.i(TAG, "TcpClient: could not connect: $e")
-            }
-        }
-        setConnected(false)
-        scheduleRetry()
-        return false
-    }
 
     fun sendSensordata(sensorDate: SensorData) {
         if (serverAddress == null) return
         val b = sensorDate.toByteArray()
         val packet = DatagramPacket(b, b.size, serverAddress, udpPort)
-        networkScope.launch {
+        scope.launch {
             try {
                 udpSocket.send(packet)
                 stats.add(b.size)
@@ -106,122 +68,88 @@ class Client(
         }
     }
 
-    fun getStatus(): String {
-        return "ip=$serverIp connected=$connected pings=$pings address=$address inControl=$inControl retries=$retries udp=$udpSent/$udpSendErrors"
-    }
+    fun startListening() {
+        if (isListening) return
 
-    fun registerListener(listener: TcpClientListener) { listeners.add(listener) }
-    fun unregisterListener(listener: TcpClientListener) { listeners.remove(listener) }
-
-    private fun updateFromJson(json: String?, setAddress: Boolean = false): Boolean {
-        if (json == null) return false
-        try {
-            data = JSONObject(json)
-            val connected = data.getJSONArray("connected")
-            val controlling = data.getString("controlling")
-            if (setAddress) {
-                address = connected.getString(connected.length() - 1)
-            }
-            setInControl(address == controlling)
-            pings++
-        } catch (e: JSONException) {
-            Log.e(TAG, "TcpClient: Cannot parse JSON (${json.length} bytes): $e")
-            return false
+        isListening = true
+        broadcastSocket = DatagramSocket(null).apply {
+            reuseAddress = true
+            bind(InetSocketAddress(udpBroadcastPort))
         }
-        return true
-    }
 
-    private fun startHeartbeat(intervalMs: Long = 1 * 1000L) {
-        heartbeatTask?.cancel()
-        heartbeatTask = object : TimerTask() {
-            override fun run() {
+        selfAddress = getLocalAddresses().firstOrNull()
+        Log.i(TAG, "Addresses: ${getLocalAddresses().size}")
+
+        startTimeoutMonitor()
+
+        scope.launch {
+            val buffer = ByteArray(32)
+            val packet = DatagramPacket(buffer, buffer.size)
+
+            Log.i(TAG, "Going to listen on $udpBroadcastPort...")
+
+            while (isListening) {
                 try {
-                    writer?.write( "{}\n")
-                    updateFromJson(reader?.readLine())
-                    Log.d(TAG, "TcpClient: heartbeat")
-                } catch (e: IOException) {
-                    Log.w(TAG, "TcpClient: IO Exception in heartbeat: $e")
-                    disconnect()
+                    broadcastSocket?.receive(packet)
+                    lastMessageTimestamp.set(System.currentTimeMillis())
+                    val message = String(
+                        packet.data,
+                        packet.offset,
+                        packet.length,
+                        Charsets.UTF_8
+                    )
+                    Log.i(TAG, "Received UDP broadcast: $message on $udpBroadcastPort")
+                    if (message != PROTOCOL) {
+                        error = "$message!=$PROTOCOL"
+                        continue
+                    }
+                    error = null
+                    serverAddress = packet.address
+
+                    // Reset the packet length for the next receive
+                    packet.length = buffer.size
+                } catch (e: Exception) {
+                    if (isListening) {
+                        println("Error receiving UDP broadcast: ${e.message}")
+                    }
                 }
             }
         }
-        timer.scheduleAtFixedRate(heartbeatTask, 0L, intervalMs)
     }
 
-    private fun getRetrySecs(): Int {
-        return retryDelaySecs[retries.coerceAtMost(retryDelaySecs.size - 1)]
-    }
+    private fun startTimeoutMonitor() {
+        timeoutJob = scope.launch {
+            while (isListening) {
+                val timeSinceLastMessage = System.currentTimeMillis() - lastMessageTimestamp.get()
+                val newTimeoutState = timeSinceLastMessage >= 1000 * timeoutSeconds
 
-    private fun scheduleRetry() {
-        reset()
-        retryTask = object: TimerTask() {
-            override fun run() {
-                Log.i(TAG, "TcpClient: Retry $retries")
-                connect(serverIp)
+                if (isTimeout.getAndSet(newTimeoutState) != newTimeoutState) {
+                    error = "timeout"
+                    serverAddress = null
+                }
+
+                delay(1000)
             }
         }
-        val retrySecs = getRetrySecs()
-        retries++
-        Log.i(TAG, "TcpClient: Scheduling retry $retries after $retrySecs")
-        timer.schedule(retryTask, 1000L * retrySecs)
     }
 
-    fun disconnect() {
-        reset()
-        serverIp = null
+
+    private fun getLocalAddresses(): List<InetAddress> {
+        return NetworkInterface.getNetworkInterfaces().asSequence()
+            .flatMap { it.inetAddresses.asSequence() }
+            .filter { !it.isLoopbackAddress && it is java.net.Inet4Address }
+            .toList()
     }
 
-    private fun reset() {
-        synchronized (lock) {
-            heartbeatTask?.cancel()
-            heartbeatTask = null
-            retryTask?.cancel()
-            retryTask = null
-
-            socket?.close()
-            socket = null
-            reader?.close()
-            reader = null
-            writer?.close()
-            writer = null
-
-            setConnected(false)
-            setAddress(null)
-            pings = 0
-            serverAddress = null
-            udpSendErrors = 0
-            udpSent = 0
-        }
+    fun stopListening() {
+        isListening = false
+        broadcastSocket?.close()
+        broadcastSocket = null
     }
 
-    private fun setAddress(newAddress: String?) {
-        synchronized (lock) {
-            if (newAddress == address) return
-            address = newAddress
-        }
-        for (listener in listeners) {
-            listener.addressChanged(address)
-        }
-    }
-
-    private fun setInControl(newInControl: Boolean) {
-        synchronized (lock) {
-            if (newInControl == inControl) return
-            inControl = newInControl
-        }
-        for (listener in listeners) {
-            listener.inControlChanged(inControl)
-        }
-    }
-
-    private fun setConnected(newConnected: Boolean) {
-        synchronized (lock) {
-            if (newConnected == connected) return
-            connected = newConnected
-        }
-        for (listener in listeners) {
-            listener.inControlChanged(inControl)
-        }
+    fun getStatus(): String {
+        if (!isListening) return "(not listening)"
+        return "server=${serverAddress?.hostAddress} self=${selfAddress?.hostAddress} udp=$udpSent/$udpSendErrors error=$error"
     }
 
     fun getStats(): NetworkStats {

@@ -65,31 +65,8 @@ class SensorService: Service(), SensorEventListener, SharedPreferences.OnSharedP
         if (prefs.getBoolean(getString(R.string.preferences_log_csv), false)) {
             valuesLogger.start()
         }
-        val serverIp = prefs.getString(getString(R.string.preferences_dmxserver_ip), null)
 
-        client.registerListener(object: TcpClientListener {
-            private fun maybeSetStreaming(value: Boolean, reason: String) {
-                val coordinating = prefs.getBoolean(
-                    getString(R.string.preferences_coordinate), false
-                )
-                if (!coordinating) return
-                Log.i(TAG, "SensorService: coordinated $reason => stream=$value")
-                prefs.edit().putBoolean(
-                    getString(R.string.preferences_stream), value
-                ).commit()
-            }
-            override fun addressChanged(address: String?) { }
-            override fun inControlChanged(inControl: Boolean) {
-                maybeSetStreaming(inControl, "inControl")
-            }
-            override fun connectedChanged(connected: Boolean) {
-                maybeSetStreaming(connected, "connected")
-            }
-        })
-
-        GlobalScope.launch(Dispatchers.IO) {
-            client.connect(serverIp)
-        }
+        client.startListening()
     }
 
     override fun onSharedPreferenceChanged(prefs: SharedPreferences?, key: String?) {
@@ -97,16 +74,11 @@ class SensorService: Service(), SensorEventListener, SharedPreferences.OnSharedP
         if (key == getString(R.string.preferences_log_csv)) {
             if (prefs.getBoolean(key, false)) valuesLogger.start() else valuesLogger.stop()
         }
-        if (key == getString(R.string.preferences_dmxserver_ip)) {
-            val serverIp = prefs.getString(key, null)
-            GlobalScope.launch(Dispatchers.IO) {
-                client.connect(serverIp)
-            }
-        }
     }
 
     override fun onDestroy() {
-        valuesLogger!!.write()
+        valuesLogger.write()
+        client.stopListening()
         Log.i(TAG, "SensorService: onDestroy")
         // Unregister sensor listener here
         sensorManager.unregisterListener(this)
@@ -126,11 +98,9 @@ class SensorService: Service(), SensorEventListener, SharedPreferences.OnSharedP
         if (e.sensor.type != Sensor.TYPE_GRAVITY) return
 
         val t = (System.currentTimeMillis() - t0) / 1e3f
-        valuesLogger!!.log(floatArrayOf(t) + sensorData.getValues())
+        valuesLogger.log(floatArrayOf(t) + sensorData.getValues())
 
-        if (prefs.getBoolean(getString(R.string.preferences_stream), false)) {
-            client.sendSensordata(sensorData)
-        }
+        client.sendSensordata(sensorData)
 
         i++
         if (i % 10 == 0) {
