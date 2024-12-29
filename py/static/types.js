@@ -3,7 +3,7 @@
 
 /**
  * @typedef {[
- *   dt: number,
+ *   t:  number,
  *   gx: number,
  *   gy: number,
  *   gz: number,

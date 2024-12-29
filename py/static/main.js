@@ -15,8 +15,8 @@ const plot = new Plot({
 });
 
 network.onData(data => {
-  dataDiv.textContent = Array.from(data).map(n => n.toFixed(3)).join(', ');
-  plot.setData(data);
+  dataDiv.textContent = Array.from(data).map((n, i) => i ? n.toFixed(3): n).join(', ');
+  plot.addData(data);
 });
 
 network.onClose(() => {

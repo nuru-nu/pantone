@@ -118,8 +118,7 @@ class UDPProtocol:
       self.logger.warning(f'Received invalid packet size from {addr}: {len(data)} bytes')
       return
 
-    dt = int(1000 * (datetime.datetime.now().timestamp() - t0))
-    print(dt)
+    t = int(1000 * (datetime.datetime.now().timestamp() - t0))
 
     try:
       values = struct.unpack('>9f', data)  # Android: big-endian
@@ -132,7 +131,7 @@ class UDPProtocol:
       except Exception as e:
         self.logger.error(f'Error forwarding OSC packet: {e}')
 
-      ws_msg = struct.pack('>L', dt)  # 32 bits = 49.71 days of milliseconds
+      ws_msg = struct.pack('>L', t)  # 32 bits = 49.71 days of milliseconds
       ws_msg += struct.pack('>6f', sd.gx, sd.gy, sd.gz, *rgb)
       asyncio.create_task(self.data_manager.broadcast(ws_msg))
       asyncio.create_task(self.data_file.write(data))

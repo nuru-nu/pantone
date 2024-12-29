@@ -21,14 +21,10 @@ export class Plot {
   #offscreenCtx;
   /** @type {Record<string, import('./scale.js').DynamicScaler>} */
   #scalers;
+  /** @type {import('./types.js').SensorData[]} */
+  #datas = [];
   /** @type {number} */
-  #lastDt = 50;
-  /** @type {import('./types.js').SensorData} */
-  #lastData = [0, 0, 0, 0, 0, 0];
-  /** @type {number} */
-  #datas = 0;
-  /** @type {number|null} */
-  #lastT = null;
+  #lastT = 0;
   /** @type {boolean} */
   #enableBackground;
 
@@ -74,50 +70,55 @@ export class Plot {
     this.#offscreenCtx.fillRect(0, 0, this.#canvas.width, this.#canvas.height);
   }
 
-
   /**
    * @param {import('./types.js').SensorData} data
    */
-  setData(data) {
-    this.#lastData = data;
-    const t = performance.now();
-    if (this.#lastT) this.#lastDt = Math.max(10, t - this.#lastT);
-    this.#lastT = t;
-    this.#datas++;
+  addData(data) {
+    this.#datas.push(data);
   }
 
   /**
    * @param {number} timestamp
    */
   draw(timestamp) {
-    const [gx, gy, gz, r, g, b] = this.#lastData;
-    this.#datas = 0;
 
     this.#offscreenCtx.drawImage(this.#canvas, 0, 0);
 
-    this.#ctx.fillStyle = `rgb(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)})`;
-    if (this.#enableBackground) {
-      document.body.style.background = this.#ctx.fillStyle;
-    }
-
-    this.#ctx.fillRect(0, 0, this.#canvas.width, this.#canvas.height);
     this.#ctx.drawImage(this.#offscreenCanvas,
       1, 0, this.#canvas.width - 1, this.#canvas.height,
       0, 0, this.#canvas.width - 1, this.#canvas.height,
     );
 
-    this.#drawDataPoints(gx, gy, gz);
+    const n = this.#datas.length;
+    console.log(n);
+    if (n) {
+      const [t, gx, gy, gz, r, g, b] = this.#datas[n - 1];
+
+      this.#datas = [];
+
+      this.#ctx.fillStyle = `rgb(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)})`;
+      this.#ctx.fillRect(this.#canvas.width - 1, 0, this.#canvas.width, this.#canvas.height);
+      this.#drawGraphs(t, gx, gy, gz);
+
+      if (this.#enableBackground) {
+        document.body.style.background = this.#ctx.fillStyle;
+      }
+    }
+
     requestAnimationFrame(timestamp => this.draw(timestamp));
   }
 
   /**
+   * @param {number} t
    * @param {number} gx
    * @param {number} gy
    * @param {number} gz
    */
-  #drawDataPoints(gx, gy, gz) {
+  #drawGraphs(t, gx, gy, gz) {
     const x = this.#canvas.width - 1;
-    const hz = 1 / (this.#lastDt / 1e3);
+    const dtMs = Math.max(10, (t - this.#lastT));
+    const hz = 1 / (dtMs / 1e3);
+    this.#lastT = t;
 
     this.#scalers.gx.addValue(gx);
     this.#scalers.gy.addValue(gy);
