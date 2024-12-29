@@ -127,7 +127,7 @@ class UDPProtocol:
       except Exception as e:
         self.logger.error(f'Error forwarding OSC packet: {e}')
 
-      ws_msg = struct.pack('<6f', sd.gx, sd.gy, sd.gz, *rgb)
+      ws_msg = struct.pack('>6f', sd.gx, sd.gy, sd.gz, *rgb)
       asyncio.create_task(self.data_manager.broadcast(ws_msg))
       asyncio.create_task(self.data_file.write(data))
       # await self.data_file.flush()
