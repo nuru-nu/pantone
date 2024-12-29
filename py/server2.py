@@ -128,7 +128,7 @@ class UDPProtocol:
       state['clients'].append(addr)
       d = dict(clients=state['clients'])
       asyncio.create_task(self.state_manager.broadcast(json.dumps(d).encode()))
-    client_i = 0
+    client_i = state['clients'].index(addr)
 
     try:
       values = struct.unpack('>9f', data)  # Android: big-endian

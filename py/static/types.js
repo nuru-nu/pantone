@@ -29,7 +29,7 @@ export function parseSensorData(buffer) {
   const result = new Array(8);
 
   result[0] = dataView.getUint32(0, false);
-  result[1] = dataView.getUint8(1);
+  result[1] = dataView.getUint8(4);
 
   for (let i = 0; i < 6; i++) {
     result[i + 2] = dataView.getFloat32(5 + (i * 4), false);
