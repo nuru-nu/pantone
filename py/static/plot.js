@@ -59,7 +59,7 @@ export class Plot {
       gx: this.#createScaler(scalersDiv, {name: 'gx', color: '#f00', min: -10, max: 10}),
       gy: this.#createScaler(scalersDiv, {name: 'gy', color: '#0f0', min: -10, max: 10}),
       gz: this.#createScaler(scalersDiv, {name: 'gz', color: '#00f', min: -10, max: 10}),
-      rz: this.#createScaler(scalersDiv, {name: 'rz', color: '#ff0', min: -200, max: 200}),
+      rz: this.#createScaler(scalersDiv, {name: 'rz', color: '#ff0', min: -3, max: 3}),
       hz: this.#createScaler(scalersDiv, {name: 'hz', color: '#fff', min: 0, max: 60}),
     };
 

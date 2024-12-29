@@ -45,6 +45,7 @@ char packetBuffer[PACKET_BUFFER_LEN];
 float imuData[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 #define G 9.81
+#define GYROFACT 0.01
 
 // isACIN=1, isCharging=0, isVBUS=1
 // GetBatState=1
@@ -220,9 +221,9 @@ void loop() {
   imuData[0] += accX * G;
   imuData[1] += accY * G;
   imuData[2] += accZ * G;
-  imuData[6] += gyroX;
-  imuData[7] += gyroY;
-  imuData[8] += gyroZ;
+  imuData[6] += gyroX * GYROFACT;
+  imuData[7] += gyroY * GYROFACT;
+  imuData[8] += gyroZ * GYROFACT;
   if ((i + 1) % SEND_EVERY == 0) {
     float imuPacket[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (int j = 0; j < 9; j++) {

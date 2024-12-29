@@ -12,9 +12,9 @@ def to_rgb(sd, *, algorithm, param1, param2, param3):
     rgb = colorsys.hsv_to_rgb(hue, 1.0, 1.0)
   elif algorithm == 'z_rot':
     global zr_int
-    if sd.rz < -100 * param2 or sd.rz > 100 * param2:
+    if sd.rz < param2 or sd.rz > param2:
       zr_int += sd.rz
-    rgb = colorsys.hsv_to_rgb(zr_int * 1e-3 * param1, 1.0, 1.0)
+    rgb = colorsys.hsv_to_rgb(zr_int * 0.1 * param1, 1.0, 1.0)
   else:
     raise ValueError(f'Unknown algorithm: {algorithm}')
 
