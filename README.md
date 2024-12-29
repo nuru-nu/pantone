@@ -32,41 +32,6 @@ And run the server:
 Then navigate to http://localhost:8000 to see server status and stats.
 
 
-## Set up as service (Raspbian)
-
-Make sure to execute this in the repo, after verifying that
-`./py/env/bin/python py/server.py` works
-
-```bash
-cat <<EOF | sudo tee /etc/systemd/system/pantone.service
-[Unit]
-Description=Pantone Server
-After=network.target
-
-[Service]
-Nice=-10
-ExecStart=$(pwd)/py/env/bin/python $(pwd)/py/server.py
-WorkingDirectory=$(pwd)
-User=$USER
-Restart=always
-RestartSec=3
-StandardOutput=syslog
-StandardError=syslog
-SyslogIdentifier=pantone
-PAMName=login
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-sudo systemctl daemon-reload
-sudo systemctl enable pantone.service
-sudo systemctl start pantone.service
-```
-
-Then follow logs with `sudo journalctl -f -u pantone`
-
-
 ## Gravity Sensors
 
 There are two implementations:
@@ -113,7 +78,63 @@ Run it:
 5. Observe DMX Monitor while running app. Make sure parcan colors match.
 
 
+## Set up as service (Raspbian)
+
+Make sure to execute this in the repo, after verifying that
+`./py/env/bin/python py/server.py` works
+
+```bash
+cat <<EOF | sudo tee /etc/systemd/system/pantone.service
+[Unit]
+Description=Pantone Server
+After=network.target
+
+[Service]
+Nice=-10
+ExecStart=$(pwd)/py/env/bin/python $(pwd)/py/server.py
+WorkingDirectory=$(pwd)
+User=$USER
+Restart=always
+RestartSec=3
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=pantone
+PAMName=login
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable pantone.service
+sudo systemctl start pantone.service
+```
+
+Then follow logs with `sudo journalctl -f -u pantone`
+
+
+## Configure wifi (Raspbian)
+
+```bash
+# makes networks visible
+sudo iwlist wlan0 scan
+# shows visible networks
+nmcli device wifi list
+# registers a new connection
+sudo nmcli device wifi connect "pantone" password "password" name "pantone"
+# higher priority means it's preferred ...
+sudo nmcli connection modify "pantone" connection.autoconnect-priority 200
+# verify networks priorities
+nmcli -f name,type,device,autoconnect,autoconnect-priority connection show
+# should try network with highest priority first when rebooting...
+```
+
+
 ## Deprecated
 
 Note that previous versions supported directly sending data to `olad` or even
 lights via Bluetooth. Check out the tag `v1` in this repository.
+
+An in-between version was connecting to a TCP server for coordination. This was
+eventually replaced by the server announcing itself via UDP broadcast and all
+the logic being moved from the sensor application to the Python server.
