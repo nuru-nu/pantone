@@ -67,7 +67,7 @@ def to_rgb(sd, *, gradient, algorithm, param1, param2, param3):
     value = (phi / (2.0 * math.pi) + 0.5)
   elif algorithm == 'z_rot':
     global _zr_int
-    if sd.rz < param2 or sd.rz > param2:
+    if sd.rz < -param2 or sd.rz > param2:
       _zr_int += sd.rz
     value = _zr_int * 0.1 * param1
   else:
