@@ -96,7 +96,7 @@ def _write_blob(x: bytes, n: int = 4) -> bytes:
 
 def to_osc(r, g, b, *, brightness, device):
 
-  values = bytearray(16)
+  values = bytearray(64)
 
   def to_value(x: float) -> int:
     return max(0, min(255, int(x * 255)))
@@ -112,6 +112,19 @@ def to_osc(r, g, b, *, brightness, device):
     values[1] = to_value(g)
     values[2] = to_value(b)
     values[3] = to_value(brightness)
+  elif device == 'vak':
+    # outdoor-par
+    values[10] = to_value(r * brightness)
+    values[11] = to_value(g * brightness)
+    values[12] = to_value(b * brightness)
+    # vielzuhell
+    values[20] = to_value(r * brightness)
+    values[21] = to_value(g * brightness)
+    values[22] = to_value(b * brightness)
+    # battery-par
+    values[30] = to_value(r * brightness)
+    values[31] = to_value(g * brightness)
+    values[32] = to_value(b * brightness)
   else:
     assert ValueError(f'Unknown device={device}')
 
