@@ -25,7 +25,7 @@ const INITIAL_STATE = {
 };
 
 const ALGORITHMS = ['gx_gy', 'z_rot'];
-const GRADIENTS = ['hue', 'noodles', 'noodles2', 'bw', 'rgb'];
+const GRADIENTS = ['hue', 'noodles', 'noodles2', 'bw', 'rgb', 'warmth', 'deepsea', 'neon', 'forest', 'aurora'];
 const DEVICES = ['froggy', 'eurolite', 'vak'];
 
 class StateManager {
