@@ -2,11 +2,11 @@
 
 import argparse
 import asyncio
+import math
+import random
 import socket
 import struct
 import time
-
-import numpy as np
 
 
 def parse_args():
@@ -58,10 +58,10 @@ class UDPSender:
       try:
         x = time.time()
         g = 9.81
-        values = np.array([np.cos(x) * g, np.sin(x) * g] + [0] * 7)
-        noise = np.random.normal(0, .5, values.shape)
+        values = [math.cos(x) * g, math.sin(x) * g] + [0] * 7
+        noise = [random.gauss(0, 0.5) for _ in range(len(values))]
 
-        message = struct.pack('>9f', *(values + noise))
+        message = struct.pack('>9f', *(value + n for value, n in zip(values, noise)))
 
         self.sock.sendto(message, (self.host, self.port))
         self.sent_count += 1
@@ -71,7 +71,7 @@ class UDPSender:
           actual_freq = self.sent_count / elapsed
           print(f"Actual frequency: {actual_freq:.2f} Hz")
 
-        sleep_time = self.target_period + np.random.normal(0, self.jitter_std)
+        sleep_time = self.target_period + random.gauss(0, self.jitter_std)
         sleep_time = max(0.001, sleep_time)  # Ensure positive sleep time
 
         await asyncio.sleep(sleep_time)

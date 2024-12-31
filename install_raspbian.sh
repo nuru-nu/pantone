@@ -16,5 +16,4 @@ if [[ "$ID" != "raspbian" ]] || [[ "$VERSION_CODENAME" != "bookworm" ]]; then
     exit 1
 fi
 
-# libopenblas-dev required for numpy
-sudo apt -y install ola libopenblas-dev
+sudo apt -y install ola
