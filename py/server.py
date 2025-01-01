@@ -275,7 +275,7 @@ async def periodic_handler(logger):
       broadcast_sock.sendto(msg, ('255.255.255.255', UDP_BROADCAST_PORT))
       logger.debug(f'Broadcast ping {msg} sent')
       async with aiofiles.open(STATE_FILE, 'w') as f:
-          await f.write(json.dumps(state, indent=2))
+          await f.write(json.dumps(serialized(state), indent=2))
       await asyncio.sleep(5.0)
   except Exception as e:
     logger.error(f"Broadcast error: {e}")
@@ -289,6 +289,10 @@ async def main():
   setup_logging(timestamp, debug=args.debug)
   logger = logging.getLogger(__name__)
   logger.info('Starting server')
+
+  if os.path.exists(STATE_FILE):
+    logger.info('Loading state from %s', STATE_FILE)
+    state.update(json.load(open(STATE_FILE)))
 
   data_file = await aiofiles.open(f'logs/{timestamp}.bin', 'wb')
 
@@ -335,6 +339,4 @@ async def main():
 if __name__ == '__main__':
   os.chdir(os.path.dirname(os.path.abspath(__file__)))
   os.makedirs('logs', exist_ok=True)
-  if os.path.exists(STATE_FILE):
-    state.update(json.load(open(STATE_FILE)))
   asyncio.run(main())
