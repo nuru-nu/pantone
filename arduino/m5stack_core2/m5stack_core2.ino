@@ -120,10 +120,14 @@ void setup() {
 
 void wifi_connect() {
   WiFi.mode(WIFI_STA);
+  WiFi.disconnect(true);
+  delay(100);
+
   char name[128];
-
-
   bool connected = false;
+
+  Serial.printf("MAC Address: %s\n", WiFi.macAddress().c_str());
+
   while (!connected) {
     M5.Lcd.clear();
     M5.Lcd.setCursor(10, 10);
@@ -132,6 +136,7 @@ void wifi_connect() {
     Serial.printf("Scanning networks...\n");
     M5.Lcd.printf("Scanning networks...\n");
     int numNetworks = WiFi.scanNetworks();
+
     Serial.printf("Found %d networks\n", numNetworks);
     M5.Lcd.printf("Found %d networks\n", numNetworks);
     for (int i = 0; i < numNetworks; i++) {
@@ -148,23 +153,25 @@ void wifi_connect() {
         M5.Lcd.printf("%2d) %s %d dBm\n", i + 1, name, WiFi.RSSI(i));
       }
     }
+    delay(1000);
 
     if (wifi_i != -1) {
-      Serial.printf("Connecting to %s\n", ssids[wifi_i]);
+      WiFi.disconnect(true, true);
+      delay(1000);
+      Serial.printf("Connecting to %s/%s\n", ssids[wifi_i], passwords[wifi_i]);
       M5.Lcd.printf("Connecting to %s: ", ssids[wifi_i]);
       WiFi.begin(ssids[wifi_i], passwords[wifi_i]);
-      for (int i = 0; i < 32 && !connected; i++) {
+      for (int i = 0; i < 60 && !connected; i++) {
         delay(500);
-        Serial.printf("WiFi.status()=%d\n", WiFi.status());
         connected |= WiFi.status() == WL_CONNECTED;
-        Serial.print(".");
+        Serial.printf("WiFi.status()=%d\n", WiFi.status());
         M5.Lcd.print(".");
       }
     }
     if (!connected) {
-      Serial.printf("Could not connect!\n");
-      M5.Lcd.printf("Could not connect!\n");
-      delay(3000);
+      WiFi.disconnect(true);
+      WiFi.scanDelete();
+      delay(1000);
     }
   }
 }
@@ -289,7 +296,7 @@ void loop() {
     float ibat = M5.Axp.GetBatCurrent();
     ibatEma = EMA_ALPHA * ibat + (1- EMA_ALPHA) * ibatEma;
     M5.Lcd.setCursor(10, 210);
-    M5.Lcd.printf("%3.0f/%3.0fmA (%3.0f/%3.0f)", iin, ibat, iinEma, ibatEma);
+    M5.Lcd.printf("%3.0f/%3.0fmA (%3.0f/%3.0f)  ", iin, ibat, iinEma, ibatEma);
   }
 
   M5.update();
