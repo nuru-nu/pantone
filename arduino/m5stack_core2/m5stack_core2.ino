@@ -107,23 +107,8 @@ void setup() {
 
   displayOn();
 
-  bool connected = false;
-  M5.Lcd.setCursor(10, 10);
-  M5.Lcd.print("Wifi: ");
-  while (!connected) {
-    Serial.printf("Connecting to %s\n", ssids[wifi_i]);
-    M5.Lcd.print(ssids[wifi_i]);
-    WiFi.begin(ssids[wifi_i], passwords[wifi_i]);
-    for (int i = 0; i < 16 && !connected; i++) {
-      delay(500);
-      connected |= WiFi.status() == WL_CONNECTED;
-      Serial.print(".");
-      M5.Lcd.print(".");
-    }
-    if (!connected) {
-      wifi_i = (wifi_i + 1) % WIFIS_N;
-    }
-  }
+  wifi_connect();
+
   M5.Lcd.clear();
   Serial.printf("\nConnected to %s", ssids[wifi_i]);
   Serial.printf("Device IP: %s\n", WiFi.localIP().toString().c_str());
@@ -131,6 +116,57 @@ void setup() {
   strcpy(udpAddress, "");
 
   udp.begin(UDP_BROADCAST_PORT);
+}
+
+void wifi_connect() {
+  WiFi.mode(WIFI_STA);
+  char name[128];
+
+
+  bool connected = false;
+  while (!connected) {
+    M5.Lcd.clear();
+    M5.Lcd.setCursor(10, 10);
+    wifi_i = -1;
+
+    Serial.printf("Scanning networks...\n");
+    M5.Lcd.printf("Scanning networks...\n");
+    int numNetworks = WiFi.scanNetworks();
+    Serial.printf("Found %d networks\n", numNetworks);
+    M5.Lcd.printf("Found %d networks\n", numNetworks);
+    for (int i = 0; i < numNetworks; i++) {
+      strncpy(name, WiFi.SSID(i).c_str(), 128);
+      bool known = false;
+      for (int j = 0; !known && j < WIFIS_N; j++) {
+        if (!strcmp(name, ssids[j])) {
+          known = true;
+          if (wifi_i == -1) wifi_i = j;
+        }
+      }
+      if (known) {
+        Serial.printf("%2d) %s %d dBm\n", i + 1, name, WiFi.RSSI(i));
+        M5.Lcd.printf("%2d) %s %d dBm\n", i + 1, name, WiFi.RSSI(i));
+      }
+    }
+
+    if (wifi_i != -1) {
+      Serial.printf("Connecting to %s\n", ssids[wifi_i]);
+      M5.Lcd.printf("Connecting to %s: ", ssids[wifi_i]);
+      WiFi.begin(ssids[wifi_i], passwords[wifi_i]);
+      for (int i = 0; i < 32 && !connected; i++) {
+        delay(500);
+        Serial.printf("WiFi.status()=%d\n", WiFi.status());
+        connected |= WiFi.status() == WL_CONNECTED;
+        Serial.print(".");
+        M5.Lcd.print(".");
+      }
+    }
+    if (!connected) {
+      Serial.printf("Could not connect!\n");
+      M5.Lcd.printf("Could not connect!\n");
+      delay(3000);
+    }
+  }
 }
 
 float accX, accY, accZ;
