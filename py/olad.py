@@ -77,8 +77,9 @@ def _get_rgb(value, gradient):
 _zr_int = 0
 
 def to_rgb(sd, *, gradient, algorithm, param1, param2, param3):
-  if algorithm == 'gx_gy':
-    phi = math.atan2(sd.gy, sd.gx)
+  if algorithm in ('gx_gy', 'gy_gz', 'gz_gx'):
+    a1, a2 = algorithm.split('_')
+    phi = math.atan2(getattr(sd, a1), getattr(sd, a2))
     value = (phi / (2.0 * math.pi) + 0.5)
   elif algorithm == 'z_rot':
     global _zr_int
