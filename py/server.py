@@ -20,6 +20,7 @@ import os
 import pathlib
 import socket
 import struct
+import tempfile
 import weakref
 
 import aiofiles
@@ -312,8 +313,14 @@ async def periodic_handler(logger):
       msg = b'PANTONE1'
       broadcast_sock.sendto(msg, (broadcast_addr, UDP_BROADCAST_PORT))
       logger.debug(f'Broadcast ping {msg} sent')
-      async with aiofiles.open(STATE_FILE, 'w') as f:
-          await f.write(json.dumps(serialized(state), indent=2))
+
+      with tempfile.NamedTemporaryFile(mode='w', delete=False, dir=os.path.dirname(STATE_FILE)) as tmp:
+        tmp_name = tmp.name
+        json.dump(serialized(state), tmp, indent=2)
+        tmp.flush()
+        os.fsync(tmp.fileno())
+      os.replace(tmp_name, STATE_FILE)
+
       await asyncio.sleep(5.0)
   except Exception as e:
     logger.error(f"Broadcast error: {e}")
@@ -330,7 +337,10 @@ async def main():
 
   if os.path.exists(STATE_FILE):
     logger.info('Loading state from %s', STATE_FILE)
-    state.update(json.load(open(STATE_FILE)))
+    try:
+      state.update(json.load(open(STATE_FILE)))
+    except json.JSONDecodeError as e:
+      logger.error('Could not load state: %s', e)
 
   data_file = await aiofiles.open(f'logs/{timestamp}.bin', 'wb')
 
