@@ -15,6 +15,7 @@ import collections
 import datetime
 import json
 import logging
+import netifaces
 import os
 import pathlib
 import socket
@@ -269,10 +270,24 @@ async def periodic_handler(logger):
   broadcast_sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
   broadcast_sock.setblocking(False)
 
+  interfaces = netifaces.interfaces()
+  broadcast_addr = None
+  for iface in interfaces:
+    addrs = netifaces.ifaddresses(iface)
+    if netifaces.AF_INET in addrs:  # Has IPv4
+      inet_info = addrs[netifaces.AF_INET][0]
+      if 'broadcast' in inet_info:
+        broadcast_addr = inet_info['broadcast']
+        break
+  if not broadcast_addr:
+    logger.error('No valid broadcast address found')
+    return
+  logger.info('Using broadcast address %s', broadcast_addr)
+
   try:
     while True:
       msg = b'PANTONE1'
-      broadcast_sock.sendto(msg, ('255.255.255.255', UDP_BROADCAST_PORT))
+      broadcast_sock.sendto(msg, (broadcast_addr, UDP_BROADCAST_PORT))
       logger.debug(f'Broadcast ping {msg} sent')
       async with aiofiles.open(STATE_FILE, 'w') as f:
           await f.write(json.dumps(serialized(state), indent=2))
