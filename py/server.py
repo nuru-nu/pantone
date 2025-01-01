@@ -15,7 +15,7 @@ import collections
 import datetime
 import json
 import logging
-import netifaces
+import ipaddress
 import os
 import pathlib
 import socket
@@ -24,6 +24,7 @@ import weakref
 
 import aiofiles
 import aiohttp.web
+import netifaces
 
 import olad
 
@@ -265,20 +266,42 @@ async def index_handler(request):
   raise aiohttp.web.HTTPFound('/static/index.html')
 
 
+def find_wireless_interface():
+  for iface in netifaces.interfaces():
+    addrs = netifaces.ifaddresses(iface)
+    if netifaces.AF_INET in addrs:  # Has IPv4
+      inet_info = addrs[netifaces.AF_INET][0]
+      if 'addr' in inet_info:
+        if any(pattern in iface.lower() for pattern in [
+            # e.g. "wlan" on Raspbian, "en" on OS X
+            'wlan', 'en', 'wifi', 'wireless', 'wl',
+        ]):
+          return iface
+  return None
+
+
+def get_broadcast_addr(interface=None):
+  if interface is None:
+    interface = find_wireless_interface()
+    if not interface:
+      return None
+
+  addrs = netifaces.ifaddresses(interface)
+  if netifaces.AF_INET in addrs:
+    inet_info = addrs[netifaces.AF_INET][0]
+    ip = inet_info['addr']
+    netmask = inet_info['netmask']
+    network = ipaddress.IPv4Network(f'{ip}/{netmask}', strict=False)
+    return str(network.broadcast_address)
+  return None
+
+
 async def periodic_handler(logger):
   broadcast_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
   broadcast_sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
   broadcast_sock.setblocking(False)
 
-  interfaces = netifaces.interfaces()
-  broadcast_addr = None
-  for iface in interfaces:
-    addrs = netifaces.ifaddresses(iface)
-    if netifaces.AF_INET in addrs:  # Has IPv4
-      inet_info = addrs[netifaces.AF_INET][0]
-      if 'broadcast' in inet_info:
-        broadcast_addr = inet_info['broadcast']
-        break
+  broadcast_addr = get_broadcast_addr()
   if not broadcast_addr:
     logger.error('No valid broadcast address found')
     return
