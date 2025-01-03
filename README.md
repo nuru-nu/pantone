@@ -1,6 +1,9 @@
-# Hello Gravity
+# Pantone
 
-Simple Android app that streams sensor data.
+IMU sensors (Android, M5Stack) with async webapp that can drive an Open
+Lightning Architecture server. Tested on OS X and on Raspbian.
+
+![Screenshot of webapp](./screenshot.png)
 
 
 ## Server
