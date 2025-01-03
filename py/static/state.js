@@ -24,7 +24,7 @@ const INITIAL_STATE = {
   algorithm: '?', param1: 1.0, param2: 1.0, param3: 1.0,
 };
 
-const ALGORITHMS = ['gx_gy', 'gy_gz', 'gz_gx', 'z_rot'];
+const ALGORITHMS = ['gx_gy', 'gy_gz', 'gz_gx', 'z_rot', 'gx_gy_gz'];
 const GRADIENTS = ['hue', 'noodles', 'noodles2', 'bw', 'rgb', 'warmth', 'deepsea', 'neon', 'forest', 'aurora'];
 const DEVICES = ['froggy', 'eurolite', 'vak'];
 

@@ -40,8 +40,9 @@ body {
 <title>UDP Data Stream</title>
 <div id="help">
   alpha: immediate update (1.0) ... exponential averaging (&lt;1.0)<br>
-  algorithm=gx_gy: absolute z rotation wrt gravity<br>
+  algorithm={gx,gy,gz}_{gy,gz,gx}: absolute {z,y,x} rotation wrt gravity<br>
   algorithm=z_rot: relative z rotation – param1 sensitivity, param2 thresold<br>
+  algorithm=gx_gy_gz: absolute z rotation wrt gravity + param1-controlled gz dependent change<br>
 </div>
 <div id="state"></div>
 <div id="plots"></div>

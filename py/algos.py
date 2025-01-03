@@ -73,18 +73,21 @@ def _get_rgb(value, gradient):
   raise ValueError(f'Invalid value: {value}')
 
 
-_zr_int = 0
+_hue_int = 0
 
 def to_rgb(sd, *, gradient, algorithm, param1, param2, param3):
-  if algorithm in ('gx_gy', 'gy_gz', 'gz_gx'):
-    a1, a2 = algorithm.split('_')
+  global _hue_int
+  if algorithm in ('gx_gy', 'gy_gz', 'gz_gx', 'gx_gy_gz'):
+    a1, a2, *a3ff = algorithm.split('_')
     phi = math.atan2(getattr(sd, a1), getattr(sd, a2))
+    if a3ff == ['gz']:
+      _hue_int += sd.gz * 0.01 * param1
+      phi += _hue_int
     value = (phi / (2.0 * math.pi) + 0.5)
   elif algorithm == 'z_rot':
-    global _zr_int
     if sd.rz < -param2 or sd.rz > param2:
-      _zr_int += sd.rz
-    value = _zr_int * 0.1 * param1
+      _hue_int += sd.rz
+    value = _hue_int * 0.1 * param1
   else:
     raise ValueError(f'Unknown algorithm: {algorithm}')
 
