@@ -40,6 +40,7 @@ There are two implementations:
 - M5Stack Core2: Install `arduino/m5stack_core2/m5stack_core2.ino` via Arduino.
   Note that you need to `cp wifi_credentials.h.example wifi_credentials.h` and
   update the network credentials for this to work.
+- Fake client for development: `py/fake_client.py`
 
 In either case, the sensor will connect to WLAN, wait for a UDP broadcast
 message sent by `py/server.py` and then start streaming UDP messages with sensor
