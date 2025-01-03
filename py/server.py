@@ -1,10 +1,9 @@
 """Server converting IMU packets to OSC messages, with web simple app.
 
-1. Listens on UDP port UDP_IMU_PORT for raw IMU messages.
+0. Announces presence in local network at UDP_BROADCAST_PORT
+1. Listens on UDP_IMU_PORT for raw IMU messages.
 2. Converts data to light OSC UDP messages and sends them to localhost:7770
-3. Listens on TCP port TCP_SERVER_PORT for client connections. Simple protocol
-   with bidirectional JSONL state updates.
-4. Web server at port HTTP_PORT with streaming UI.
+3. Async web server at HTTP_PORT with streaming UI.
 """
 
 # https://claude.ai/chat/793e8562-ecef-458d-baee-39f5f397cf61
