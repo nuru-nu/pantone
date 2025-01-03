@@ -15,7 +15,6 @@ import collections
 import datetime
 import json
 import logging
-import ipaddress
 import os
 import pathlib
 import socket
@@ -25,9 +24,10 @@ import weakref
 
 import aiofiles
 import aiohttp.web
-import netifaces
 
+import algos
 import olad
+import netutils
 
 
 HTTP_PORT = 8000
@@ -228,36 +228,6 @@ async def index_handler(request):
   raise aiohttp.web.HTTPFound('/static/index.html')
 
 
-def find_wireless_interface():
-  for iface in netifaces.interfaces():
-    addrs = netifaces.ifaddresses(iface)
-    if netifaces.AF_INET in addrs:  # Has IPv4
-      inet_info = addrs[netifaces.AF_INET][0]
-      if 'addr' in inet_info:
-        if any(pattern in iface.lower() for pattern in [
-            # e.g. "wlan" on Raspbian, "en" on OS X
-            'wlan', 'en', 'wifi', 'wireless', 'wl',
-        ]):
-          return iface
-  return None
-
-
-def get_broadcast_addr(interface=None):
-  if interface is None:
-    interface = find_wireless_interface()
-    if not interface:
-      return None
-
-  addrs = netifaces.ifaddresses(interface)
-  if netifaces.AF_INET in addrs:
-    inet_info = addrs[netifaces.AF_INET][0]
-    ip = inet_info['addr']
-    netmask = inet_info['netmask']
-    network = ipaddress.IPv4Network(f'{ip}/{netmask}', strict=False)
-    return str(network.broadcast_address)
-  return None
-
-
 async def osc_handler(running, queue, data_manager, state_manager, data_file, hz=60):
   logger = logging.getLogger('osc_handler')
   osc_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -290,7 +260,7 @@ async def osc_handler(running, queue, data_manager, state_manager, data_file, hz
         asyncio.create_task(state_manager.broadcast(json.dumps(d).encode()))
 
       sds[addr] = sd
-      rgbs[addr] = olad.to_rgb(
+      rgbs[addr] = algos.to_rgb(
           sd,
           gradient=state['gradient'],
           algorithm=state['algorithm'],
@@ -345,7 +315,7 @@ async def periodic_handler(running):
   broadcast_sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
   broadcast_sock.setblocking(False)
 
-  broadcast_addr = get_broadcast_addr()
+  broadcast_addr = netutils.get_broadcast_addr()
   if not broadcast_addr:
     logger.error('No valid broadcast address found')
     return
