@@ -273,6 +273,13 @@ sudo systemctl disable wifi-hotspot
 ```
 
 
+## Known bugs
+
+1. When using the Raspbian in Hotspot mode, the ESP32 stack cannot get a new
+   wifi connection when it's restarted. The solution is to restart the Raspberry
+   Pi (or to restart the `wifi-hotspot` service instead).
+
+
 ## Deprecated
 
 Note that previous versions supported directly sending data to `olad` or even
