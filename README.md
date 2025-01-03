@@ -63,6 +63,13 @@ Run it:
 4. Main app runs at http://dmxserver.local:8000
 
 
+## M5Stack sensor
+
+Rename `arduino/m5stack_core2/wifi_credentials.h.example` to
+`arduino/m5stack_core2/wifi_credentials.h` and compile/upload sketch to M5Stack
+(see `arduino/m5stack_core2/m5stack_core2.ino` for installation instructions).
+
+
 ## Deprecated
 
 Note that previous versions supported directly sending data to `olad` or even
