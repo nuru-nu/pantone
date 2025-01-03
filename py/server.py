@@ -267,6 +267,7 @@ async def osc_handler(running, queue, data_manager, state_manager, data_file, hz
   rgbs = {}
   sds = {}
   ts = {}
+  active = None
 
   def get_ema(value, ema):
     # return value * 0.5 + ema * 0.5
@@ -275,7 +276,7 @@ async def osc_handler(running, queue, data_manager, state_manager, data_file, hz
   while running.is_set():
     loop_t0 = datetime.datetime.now().timestamp()
 
-    # first update rgbs from sensor data
+    # first update rgbs etc from sensor data
     updated = set()
     while not queue.empty():
       t, addr, sd = await queue.get()
@@ -298,6 +299,11 @@ async def osc_handler(running, queue, data_manager, state_manager, data_file, hz
           param3=state['param3'],
       )
       ts[addr] = t
+      active = get_active(addr, t)
+      if active != state['active']:
+        state['active'] = active
+        d = dict(active=state['active'])
+        asyncio.create_task(state_manager.broadcast(json.dumps(d).encode()))
 
     # then sync update of emas, ws, and olad if active sensor
     for addr, sd in sds.items():
@@ -311,12 +317,6 @@ async def osc_handler(running, queue, data_manager, state_manager, data_file, hz
       asyncio.create_task(data_manager.broadcast(ws_msg))
       if data_file:
         asyncio.create_task(data_file.write(ws_msg))
-
-      active = get_active(addr, t)
-      if active != state['active']:
-        state['active'] = active
-        d = dict(active=state['active'])
-        asyncio.create_task(state_manager.broadcast(json.dumps(d).encode()))
 
       if active == addr:
         msg = olad.to_osc(*rgb, brightness=state['brightness'], device=state['device'])
