@@ -85,27 +85,12 @@ def setup_logging(timestamp, debug=False):
   logging.getLogger(__name__).info(f"Logging level set to: {'DEBUG' if debug else 'INFO'}")
 
 
-smoothened = None
-def smooth(values):
-  global smoothened
-  if not smoothened:
-    smoothened = values
-  alpha = state['alpha']
-  f = lambda s, x: x * alpha + (1 - alpha) * s  # noqa: E731
-  smoothened = tuple(map(f, smoothened, values))
-  return smoothened
-
-
 class UDPProtocol:
-  def __init__(self, data_manager, state_manager, data_file):
-    self.data_manager = data_manager
-    self.state_manager = state_manager
-    self.data_file = data_file
+  def __init__(self, queue):
+    self.queue = queue
     self.transport = None
     self.logger = logging.getLogger('UDPProtocol')
     self._closed = False
-    self.osc_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    self.osc_address = ('localhost', 7770)
     self.logger.info('Created UDPProtocol')
 
   def connection_made(self, transport):
@@ -122,13 +107,9 @@ class UDPProtocol:
     if self.transport:
       try:
         self.transport.close()
-      except:
+      except:  # noqa: E722
         pass
       self.transport = None
-      try:
-        self.osc_socket.close()
-      except:
-        pass
 
   def datagram_received(self, data, addr):
     if self._closed:
@@ -138,42 +119,15 @@ class UDPProtocol:
       return
 
     t = int(1000 * (datetime.datetime.now().timestamp() - t0))
-
     addr = '{}:{}'.format(*addr)
-    if addr not in state['clients']:
-      state['clients'].append(addr)
-      d = dict(clients=state['clients'])
-      asyncio.create_task(self.state_manager.broadcast(json.dumps(d).encode()))
-    client_i = state['clients'].index(addr)
 
     try:
       values = struct.unpack('>9f', data)  # Android: big-endian
       sd = SensorData(*values)
-      rgb = olad.to_rgb(sd, gradient=state['gradient'], algorithm=state['algorithm'], param1=state['param1'], param2=state['param2'], param3=state['param3'])
-      rgb = smooth(rgb)
-
-      active = get_active(addr, t)
-      if active != state['active']:
-        state['active'] = active
-        d = dict(active=state['active'])
-        asyncio.create_task(self.state_manager.broadcast(json.dumps(d).encode()))
-      if active == addr:
-        msg = olad.to_osc(*rgb, brightness=state['brightness'], device=state['device'])
-        try:
-          self.osc_socket.sendto(msg, self.osc_address)
-        except Exception as e:
-          self.logger.error(f'Error forwarding OSC packet: {e}')
-
-      ws_msg = struct.pack('>L', t)  # 32 bits = 49.71 days of milliseconds
-      ws_msg += struct.pack('B', client_i)
-      ws_msg += struct.pack('>7f', sd.gx, sd.gy, sd.gz, sd.rz, *rgb)
-      asyncio.create_task(self.data_manager.broadcast(ws_msg))
-      asyncio.create_task(self.data_file.write(ws_msg))
-      # await self.data_file.flush()
-
-      # self.logger.debug(f'Received packet from {addr}: {values}')
     except Exception as e:
       self.logger.error(f'Error processing packet from {addr}: {e}')
+
+    asyncio.create_task(self.queue.put((t, addr, sd)))
 
 
 class WebSocketManager:
@@ -203,6 +157,9 @@ class WebSocketManager:
       await asyncio.gather(*tasks, return_exceptions=True)
 
 
+active_ws_connections = set()
+
+
 async def data_ws(request):
   logger = logging.getLogger('DataWs')
   ws = aiohttp.web.WebSocketResponse()
@@ -211,12 +168,14 @@ async def data_ws(request):
   data_manager = request.app['data_manager']
   data_manager.add_client(ws)
 
+  active_ws_connections.add(ws)
   try:
     async for msg in ws:
       del msg
   except Exception as e:
     logger.error(f'DataWs error: {e}')
   finally:
+    active_ws_connections.remove(ws)
     data_manager.remove_client(ws)
     logger.info('DataWs connection closed')
   return ws
@@ -231,12 +190,14 @@ async def state_ws(request):
   state_manager = request.app['state_manager']
   state_manager.add_client(ws)
 
+  active_ws_connections.add(ws)
   try:
     async for msg in ws:
       del msg
   except Exception as e:
     logger.error(f'StateWs error: {e}')
   finally:
+    active_ws_connections.remove(ws)
     state_manager.remove_client(ws)
     logger.info('StateWs connection closed')
   return ws
@@ -297,7 +258,89 @@ def get_broadcast_addr(interface=None):
   return None
 
 
-async def periodic_handler(logger):
+async def osc_handler(running, queue, data_manager, state_manager, data_file, hz=60):
+  logger = logging.getLogger('osc_handler')
+  osc_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+  osc_address = ('localhost', 7770)
+
+  emas = {}
+  rgbs = {}
+  sds = {}
+  ts = {}
+
+  def get_ema(value, ema):
+    # return value * 0.5 + ema * 0.5
+    return value * state['alpha'] + (1 - state['alpha']) * ema
+
+  while running.is_set():
+    loop_t0 = datetime.datetime.now().timestamp()
+
+    # first update rgbs from sensor data
+    updated = set()
+    while not queue.empty():
+      t, addr, sd = await queue.get()
+      if addr in updated:
+        logger.warning('discarding message from %s', addr)
+      updated.add(addr)
+
+      if addr not in state['clients']:
+        state['clients'].append(addr)
+        d = dict(clients=state['clients'])
+        asyncio.create_task(state_manager.broadcast(json.dumps(d).encode()))
+
+      sds[addr] = sd
+      rgbs[addr] = olad.to_rgb(
+          sd,
+          gradient=state['gradient'],
+          algorithm=state['algorithm'],
+          param1=state['param1'],
+          param2=state['param2'],
+          param3=state['param3'],
+      )
+      ts[addr] = t
+
+    # then sync update of emas, ws, and olad if active sensor
+    for addr, sd in sds.items():
+      rgb = rgbs[addr]
+      rgb = emas[addr] = tuple(map(get_ema, rgb, emas.get(addr, rgb)))
+      t = ts[addr]
+
+      ws_msg = struct.pack('>L', t)  # 32 bits = 49.71 days of milliseconds
+      ws_msg += struct.pack('B', state['clients'].index(addr))
+      ws_msg += struct.pack('>7f', sd.gx, sd.gy, sd.gz, sd.rz, *rgb)
+      asyncio.create_task(data_manager.broadcast(ws_msg))
+      if data_file:
+        asyncio.create_task(data_file.write(ws_msg))
+
+      active = get_active(addr, t)
+      if active != state['active']:
+        state['active'] = active
+        d = dict(active=state['active'])
+        asyncio.create_task(state_manager.broadcast(json.dumps(d).encode()))
+
+      if active == addr:
+        msg = olad.to_osc(*rgb, brightness=state['brightness'], device=state['device'])
+        try:
+          osc_socket.sendto(msg, osc_address)
+        except Exception as e:
+          logger.error(f'Error forwarding OSC packet: {e}')
+
+    wait_dt = 1 / hz - (datetime.datetime.now().timestamp() - loop_t0)
+    if wait_dt > 0:
+      await asyncio.sleep(wait_dt)
+    else:
+      logger.warning('wait_dt = %.2fms < 0', wait_dt * 1e3)
+
+  logger.inf('stopping')
+
+  try:
+    osc_socket.close()
+  except:  # noqa: E722
+    pass
+
+
+async def periodic_handler(running):
+  logger = logging.getLogger('periodic_handler')
   broadcast_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
   broadcast_sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
   broadcast_sock.setblocking(False)
@@ -309,7 +352,7 @@ async def periodic_handler(logger):
   logger.info('Using broadcast address %s', broadcast_addr)
 
   try:
-    while True:
+    while running.is_set():
       msg = b'PANTONE1'
       broadcast_sock.sendto(msg, (broadcast_addr, UDP_BROADCAST_PORT))
       logger.debug(f'Broadcast ping {msg} sent')
@@ -322,6 +365,8 @@ async def periodic_handler(logger):
       os.replace(tmp_name, STATE_FILE)
 
       await asyncio.sleep(5.0)
+
+    logger.info('stopping')
   except Exception as e:
     logger.error(f"Broadcast error: {e}")
     broadcast_sock.close()
@@ -358,29 +403,36 @@ async def main():
   app.router.add_static('/static', pathlib.Path('static'))
 
   loop = asyncio.get_event_loop()
+  queue = asyncio.Queue()
 
   transport, protocol = await loop.create_datagram_endpoint(
-      lambda: UDPProtocol(data_manager, state_manager, data_file),
+      lambda: UDPProtocol(queue),
       local_addr=('0.0.0.0', UDP_IMU_PORT)
   )
   del protocol
 
-  runner = aiohttp.web.AppRunner(app)
-  await runner.setup()
-  site = aiohttp.web.TCPSite(runner, '0.0.0.0', HTTP_PORT)
+  app_runner = aiohttp.web.AppRunner(app)
+  await app_runner.setup()
+  site = aiohttp.web.TCPSite(app_runner, '0.0.0.0', HTTP_PORT)
   await site.start()
 
   logger.info('All servers started')
 
+  running = asyncio.Event()
+  running.set()
   try:
     await asyncio.gather(
         asyncio.Event().wait(),  # run forever
-        periodic_handler(logger),
+        periodic_handler(running),
+        osc_handler(running, queue, data_manager, state_manager, data_file),
     )
   finally:
+    running.clear()
     transport.close()
-    await runner.cleanup()
-    data_file.close()
+    for ws in active_ws_connections.copy():
+        await ws.close(code=aiohttp.WSCloseCode.GOING_AWAY,  message='Server shutdown')
+    await app_runner.cleanup()
+    await data_file.close()
     logger.info('Server shutdown complete')
 
 

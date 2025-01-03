@@ -29,6 +29,8 @@ export class Plot {
   #datas = [];
   /** @type {number} */
   #lastT = 0;
+  /** @type {number} */
+  #lastDt = 0;
   /** @type {boolean} */
   #enableBackground = false;
 
@@ -143,9 +145,11 @@ export class Plot {
    */
   #drawGraphs(t, gx, gy, gz, rz) {
     const x = this.#canvas.width - 1;
-    const dtMs = Math.max(10, (t - this.#lastT));
-    const hz = 1 / (dtMs / 1e3);
-    this.#lastT = t;
+    if (t != this.#lastT) {
+      this.#lastDt = Math.max(10, (t - this.#lastT));
+      this.#lastT = t;
+    }
+    const hz = 1 / (this.#lastDt / 1e3);
 
     this.#scalers.gx.addValue(gx);
     this.#scalers.gy.addValue(gy);
