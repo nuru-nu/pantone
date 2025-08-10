@@ -2,10 +2,12 @@
 
 import { NetworkManager } from './network.js';
 import { Plot } from './plot.js';
+import Logs from './logs.js';
 import StateManager from './state.js';
 
 const network = new NetworkManager();
-const stateManager = new StateManager(/** @type {HTMLElement} */ (document.getElementById('state')));
+const logs = new Logs(/** @type {HTMLDivElement} */ (document.getElementById('logs')));
+const stateManager = new StateManager(/** @type {HTMLElement} */ (document.getElementById('state')), logs);
 const plotsDiv = /** @type {HTMLDivElement} */ (document.getElementById('plots'));
 
 /** @type {Map<String, Plot>} */

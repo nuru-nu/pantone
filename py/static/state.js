@@ -1,8 +1,10 @@
 // @ts-check
 
+import Logs from './logs.js';
+
 /**
  * @typedef {Object} State
- * @property {string} started
+ * @property {String} started
  * @property {String[]} clients
  * @property {String} active
  * @property {number} alpha
@@ -13,6 +15,7 @@
  * @property {number} param1
  * @property {number} param2
  * @property {number} param3
+ * @property {String} log
  */
 
 const INITIAL_STATE = {
@@ -31,9 +34,11 @@ const DEVICES = ['froggy', 'eurolite', 'vak'];
 class StateManager {
   /**
    * @param {HTMLElement} targetElement
+   * @param {Logs} logs
    */
-  constructor(targetElement) {
+  constructor(targetElement, logs) {
     this.targetElement = targetElement;
+    this.logs = logs;
     this.state = INITIAL_STATE;
     this.ws = null;
     this.initialize();
@@ -54,6 +59,10 @@ class StateManager {
       try {
         /** @type {State} */
         const state = JSON.parse(await event.data.text());
+        if (state.log) {
+          this.logs.add(state.log);
+          delete state.log;
+        }
         this.updateState(state);
         this.render();
       } catch (error) {

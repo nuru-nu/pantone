@@ -156,6 +156,21 @@ class WebSocketManager:
       await asyncio.gather(*tasks, return_exceptions=True)
 
 
+class BroadcastLoggingHandler(logging.Handler):
+
+  def __init__(self, state_manager: WebSocketManager):
+    super().__init__()
+    self.state_manager = state_manager
+    self.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+
+  def emit(self, record):
+    try:
+      msg = self.format(record)
+      asyncio.create_task(self.state_manager.broadcast(json.dumps(dict(log=msg)).encode()))
+    except Exception as e:
+      logging.error(f"Error broadcasting log message: {e}")
+
+
 active_ws_connections = set()
 
 
@@ -360,6 +375,8 @@ async def main():
 
   data_manager = WebSocketManager('data')
   state_manager = WebSocketManager('state')
+
+  logging.getLogger().addHandler(BroadcastLoggingHandler(state_manager))
 
   app = aiohttp.web.Application()
   app['data_manager'] = data_manager
