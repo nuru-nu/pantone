@@ -16,7 +16,17 @@ Tested with
 - OS X: `olad` can be installed with `brew install olad`
 - Raspbian Bookworm: dependencies can be installed with `./install_raspbian.sh`
 
-Then install Python dependencies:
+Then install Python dependencies and run (uv):
+
+```bash
+./install_raspbian.sh
+which uv || ( curl -LsSf https://astral.sh/uv/install.sh | sh )
+uv sync
+
+uv run py/server.py
+```
+
+Then install Python dependencies and run (legacy):
 
 ```bash
 ./install_raspbian.sh
@@ -24,11 +34,7 @@ cd py
 python3 -m venv env
 . env/bin/activate
 pip install -r requirements.txt
-```
 
-And run the server:
-
-```bash
 ./py/env/bin/python py/server.py
 ```
 
