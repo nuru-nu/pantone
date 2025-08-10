@@ -4,6 +4,7 @@ import { NetworkManager } from './network.js';
 import { Plot } from './plot.js';
 import Logs from './logs.js';
 import StateManager from './state.js';
+import { setEmojiFavicon } from './favicon.js';
 
 const network = new NetworkManager();
 const logs = new Logs(/** @type {HTMLDivElement} */ (document.getElementById('logs')));
@@ -25,3 +26,5 @@ network.onData(data => {
 network.onClose(() => {
   console.log('Connection closed');
 });
+
+window.addEventListener('DOMContentLoaded', () => setEmojiFavicon('🌈'));
