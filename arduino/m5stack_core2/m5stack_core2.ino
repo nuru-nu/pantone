@@ -1,6 +1,8 @@
 // Setup Arduino IDE (board manager, libraries):
 // https://docs.m5stack.com/en/arduino/arduino_ide
 
+// NOTE: M5Stack board manager v3.2.2 failed, but v2.0.9 worked
+
 // Compile / Upload:
 // -> select Board=M5Core2 (and correct USB port)
 
